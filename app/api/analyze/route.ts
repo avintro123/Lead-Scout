@@ -1,7 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+// Gemini API models in priority order
+const GEMINI_MODELS = [
+  "gemini-3.5-flash",
+  "gemini-3.7-flash",
+  "gemini-flash-lite-latest",
+  "gemini-3.8-flash",
+];
+
+async function callGemini(apiKey: string, prompt: string, temperature = 0.3, maxTokens = 2048) {
+  for (const model of GEMINI_MODELS) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature,
+            maxOutputTokens: maxTokens,
+            responseMimeType: "application/json",
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.warn(`Model ${model} failed:`, errText);
+        continue; // Try next model
+      }
+
+      const data = await res.json();
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      // Filter out any thinking/thought parts to get actual JSON output
+      const textPart = parts.find((p: { text?: string; thought?: boolean }) => p.text && !p.thought);
+      const text = textPart?.text || parts[0]?.text || "";
+      if (text) return text;
+    } catch (e) {
+      console.warn(`Call to ${model} threw error:`, e);
+    }
+  }
+  return null;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,37 +81,18 @@ Return ONLY a valid JSON object (no markdown, no code fences) with exactly these
   "keyFeatures": ["array of 4-6 key products or features"]
 }`;
 
-    const analysisResponse = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: analysisPrompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 2048,
-          responseMimeType: "application/json",
-        },
-      }),
-    });
-
-    if (!analysisResponse.ok) {
-      const errText = await analysisResponse.text();
-      console.error("Gemini analysis error:", errText);
+    const analysisText = await callGemini(apiKey, analysisPrompt, 0.3, 2048);
+    if (!analysisText) {
       return NextResponse.json(
         { error: "Gemini API analysis failed", fallback: true },
         { status: 200 }
       );
     }
 
-    const analysisData = await analysisResponse.json();
-    const analysisText =
-      analysisData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
     let dossier;
     try {
       dossier = JSON.parse(analysisText);
     } catch {
-      // Try to extract JSON from the response
       const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         dossier = JSON.parse(jsonMatch[0]);
@@ -101,53 +123,37 @@ Generate ONLY a valid JSON array (no markdown, no code fences) with exactly 4 ob
 [
   {
     "type": "cold_open",
-    "label": "Email 1 — Cold Open (Hook)",
+    "label": "Initial outreach",
     "subject": "compelling subject line",
-    "body": "full email body with [Name] as placeholder. Use markdown bold for emphasis."
+    "body": "full email body with [Name] as placeholder"
   },
   {
     "type": "value_add",
-    "label": "Email 2 — Value Add",
+    "label": "Strategic Angle",
     "subject": "compelling subject line",
     "body": "full email body providing specific value and industry insights"
-  },
-  {
-    "type": "follow_up",
-    "label": "Email 3 — Follow-Up",
-    "subject": "Re: previous subject line",
-    "body": "brief, friendly follow-up with clear CTA"
   },
   {
     "type": "linkedin_inmail",
     "label": "LinkedIn InMail",
     "subject": "short punchy subject",
-    "body": "conversational LinkedIn message, shorter format, include emoji"
+    "body": "conversational LinkedIn message, shorter format"
+  },
+  {
+    "type": "follow_up",
+    "label": "Closing Touch",
+    "subject": "Re: previous subject line",
+    "body": "brief, friendly closing follow-up"
   }
 ]`;
 
-    const outreachResponse = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: outreachPrompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 3000,
-          responseMimeType: "application/json",
-        },
-      }),
-    });
-
-    if (!outreachResponse.ok) {
+    const outreachText = await callGemini(apiKey, outreachPrompt, 0.7, 3000);
+    if (!outreachText) {
       return NextResponse.json(
         { error: "Gemini API outreach generation failed", fallback: true },
         { status: 200 }
       );
     }
-
-    const outreachData = await outreachResponse.json();
-    const outreachText =
-      outreachData.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     let emails;
     try {
