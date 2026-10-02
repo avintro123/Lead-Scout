@@ -1,0 +1,636 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import {
+  Globe,
+  Users,
+  Copy,
+  Check,
+  ExternalLink,
+  Download,
+  FileText,
+  Sparkles,
+  ArrowRight,
+  Code2,
+  Mail,
+  Flame,
+  CheckCircle2,
+  Send,
+  Layers,
+} from "lucide-react";
+import { CompanyDossier, OutreachEmail, ActivityItem } from "@/lib/types";
+import ActivityTimeline from "./ActivityTimeline";
+import { getUserSettings } from "@/lib/storage";
+
+type ProfileTab = "overview" | "signals" | "outreach" | "tech" | "activity";
+
+interface CompanyProfileProps {
+  dossier: CompanyDossier;
+  emails: OutreachEmail[] | null;
+  activities: ActivityItem[];
+  isResearching: boolean;
+}
+
+function CopyBtn({
+  text,
+  label = "Copy",
+  variant = "ghost",
+}: {
+  text: string;
+  label?: string;
+  variant?: "ghost" | "solid";
+}) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  };
+
+  if (variant === "solid") {
+    return (
+      <button
+        onClick={handleCopy}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium bg-fg text-surface rounded-md hover:bg-fg/90 transition-colors shadow-xs"
+      >
+        {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+        <span>{copied ? "Copied!" : label}</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="inline-flex items-center gap-1 px-2.5 py-1 text-[12px] text-fg-secondary hover:text-fg rounded-md transition-colors hover:bg-subtle border border-border/80 bg-surface"
+    >
+      {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-fg-muted" />}
+      <span>{copied ? "Copied" : label}</span>
+    </button>
+  );
+}
+
+export default function CompanyProfile({
+  dossier,
+  emails,
+  activities,
+  isResearching,
+}: CompanyProfileProps) {
+  const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
+  const [activeEmailIdx, setActiveEmailIdx] = useState(0);
+  const [personalize, setPersonalize] = useState(true);
+
+  const settings = getUserSettings();
+
+  // If research finishes while on activity tab, auto switch to overview
+  useEffect(() => {
+    if (!isResearching && activeTab === "activity" && activities.length > 0) {
+      const timer = setTimeout(() => setActiveTab("overview"), 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isResearching, activeTab, activities.length]);
+
+  const handleExportMarkdown = () => {
+    let md = `# Executive Dossier: ${dossier.companyName}\n\n`;
+    md += `**Domain:** ${dossier.domain}\n`;
+    md += `**Generated:** ${new Date().toLocaleString()}\n`;
+    md += `**Industry:** ${dossier.industryTags.join(", ")}\n`;
+    md += `**Headcount:** ${dossier.estimatedHeadcount}\n`;
+    md += `**Business Model:** ${dossier.estimatedBusinessModel}\n\n`;
+    md += `## One-Sentence Summary\n${dossier.oneSentenceSummary}\n\n`;
+    md += `## Target Audience\n${dossier.targetAudience}\n\n`;
+    md += `## Key Value Propositions\n`;
+    dossier.valuePropositions.forEach((vp) => (md += `- ${vp}\n`));
+    md += `\n## Identified Pain Points & Pitch Angles\n`;
+    dossier.top3PainPoints.forEach((pp, i) => (md += `${i + 1}. ${pp}\n`));
+    md += `\n## Tech Stack & Architecture\n`;
+    dossier.techTags.forEach((t) => (md += `- ${t}\n`));
+
+    if (emails && emails.length > 0) {
+      md += `\n---\n\n## Personalized Outreach Cadence\n\n`;
+      emails.forEach((e, idx) => {
+        md += `### Touch ${idx + 1}: ${e.label} (${e.type})\n`;
+        md += `**Subject:** ${e.subject}\n\n`;
+        md += `${e.body}\n\n---\n\n`;
+      });
+    }
+
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${dossier.companyName.toLowerCase().replace(/\s+/g, "-")}-dossier.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportJSON = () => {
+    const data = {
+      dossier,
+      emails,
+      exportedAt: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${dossier.companyName.toLowerCase().replace(/\s+/g, "-")}-intelligence.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const getPersonalizedBody = (rawBody: string) => {
+    if (!personalize) return rawBody;
+    return rawBody
+      .replace(/\[Your Name\]/g, settings.senderName || "Alex Rivera")
+      .replace(/\[Your Company\]/g, settings.senderCompany || "Acquisition Engine")
+      .replace(/\[Similar Company\]/g, "peer enterprise accounts");
+  };
+
+  const tabs: { id: ProfileTab; label: string; badge?: string | number }[] = [
+    { id: "overview", label: "Executive Dossier" },
+    { id: "signals", label: "Pain Points & Opportunities", badge: dossier.top3PainPoints.length },
+    { id: "outreach", label: "Outreach Sequences", badge: emails ? emails.length : undefined },
+    { id: "tech", label: "Tech Stack & Architecture", badge: dossier.techTags.length },
+    {
+      id: "activity",
+      label: "Live Pipeline",
+      badge: isResearching ? "Running" : undefined,
+    },
+  ];
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Company Header Card */}
+      <div className="bg-surface border border-border rounded-lg p-6 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-lg bg-subtle border border-border flex items-center justify-center text-fg font-semibold text-lg shrink-0 shadow-2xs">
+              {dossier.companyName.charAt(0)}
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-xl font-semibold text-fg tracking-tight">
+                  {dossier.companyName}
+                </h1>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-subtle text-fg-secondary border border-border">
+                  <Globe className="w-3 h-3 text-fg-muted" />
+                  {dossier.domain}
+                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  Analyzed
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3 mt-1.5 text-[12px] text-fg-secondary flex-wrap">
+                <span className="font-medium text-fg">
+                  {dossier.industryTags.slice(0, 2).join(" · ")}
+                </span>
+                <span className="text-fg-faint">/</span>
+                <span className="inline-flex items-center gap-1">
+                  <Users className="w-3 h-3 text-fg-muted" />
+                  {dossier.estimatedHeadcount}
+                </span>
+                <span className="text-fg-faint">/</span>
+                <span>{dossier.estimatedBusinessModel}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={`https://${dossier.domain}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-fg-secondary border border-border rounded-md hover:bg-subtle transition-colors"
+            >
+              <span>Visit Site</span>
+              <ExternalLink className="w-3 h-3 text-fg-muted" />
+            </a>
+
+            <div className="flex items-center border border-border rounded-md divide-x divide-border bg-surface">
+              <button
+                onClick={handleExportMarkdown}
+                className="px-2.5 py-1.5 text-[12px] font-medium text-fg hover:bg-subtle transition-colors inline-flex items-center gap-1.5"
+                title="Download Markdown Report"
+              >
+                <Download className="w-3 h-3 text-fg-muted" />
+                <span>Export (.md)</span>
+              </button>
+              <button
+                onClick={handleExportJSON}
+                className="px-2 py-1.5 text-[12px] font-medium text-fg-secondary hover:text-fg hover:bg-subtle transition-colors"
+                title="Download JSON Intelligence"
+              >
+                JSON
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modern Tabs Navigation */}
+      <div className="border-b border-border">
+        <nav className="flex gap-1 overflow-x-auto no-scrollbar">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative px-3.5 py-2.5 text-[13px] font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${
+                  isActive
+                    ? "text-fg font-semibold"
+                    : "text-fg-muted hover:text-fg-secondary"
+                }`}
+              >
+                <span>{tab.label}</span>
+                {tab.badge !== undefined && (
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-medium tabular-nums ${
+                      isActive
+                        ? "bg-fg text-surface"
+                        : "bg-subtle text-fg-muted border border-border/80"
+                    }`}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
+                {isActive && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-fg rounded-full" />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* TAB 1: EXECUTIVE DOSSIER */}
+      {activeTab === "overview" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+          {/* Main 2-column info */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Executive Summary */}
+            <div className="bg-surface border border-border rounded-lg p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider">
+                  Executive Summary
+                </span>
+                <CopyBtn text={dossier.oneSentenceSummary} label="Copy" />
+              </div>
+              <p className="text-[14px] text-fg leading-relaxed font-normal">
+                {dossier.oneSentenceSummary}
+              </p>
+              {dossier.tagline && (
+                <div className="mt-3 pt-3 border-t border-border flex items-center gap-2 text-[12px] text-fg-muted italic">
+                  <span className="font-semibold text-fg-secondary not-italic">Tagline:</span>
+                  &ldquo;{dossier.tagline}&rdquo;
+                </div>
+              )}
+            </div>
+
+            {/* Target Audience & Market ICP */}
+            <div className="bg-surface border border-border rounded-lg p-5 shadow-xs">
+              <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider block mb-2">
+                Ideal Customer Profile (ICP) &amp; Audience
+              </span>
+              <p className="text-[13px] text-fg-secondary leading-relaxed">
+                {dossier.targetAudience}
+              </p>
+            </div>
+
+            {/* Key Value Propositions */}
+            <div className="bg-surface border border-border rounded-lg p-5 shadow-xs">
+              <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider block mb-3">
+                Core Value Propositions
+              </span>
+              <div className="space-y-2.5">
+                {dossier.valuePropositions.map((vp, i) => (
+                  <div key={i} className="flex items-start gap-2.5 text-[13px] text-fg-secondary">
+                    <span className="w-1.5 h-1.5 rounded-full bg-fg-muted mt-2 shrink-0" />
+                    <span className="leading-relaxed">{vp}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Core Products & Features */}
+            {dossier.keyFeatures.length > 0 && (
+              <div className="bg-surface border border-border rounded-lg p-5 shadow-xs">
+                <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider block mb-3">
+                  Products &amp; Capabilities
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {dossier.keyFeatures.map((f, i) => (
+                    <div
+                      key={i}
+                      className="px-3 py-2 rounded-md border border-border/80 bg-subtle/30 text-[12px] font-medium text-fg flex items-center justify-between"
+                    >
+                      <span>{f}</span>
+                      <ArrowRight className="w-3 h-3 text-fg-muted shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Rail: Metadata & Fast Facts */}
+          <div className="space-y-6">
+            <div className="bg-surface border border-border rounded-lg p-5 shadow-xs">
+              <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider block mb-4">
+                Company Metadata
+              </span>
+
+              <dl className="space-y-3.5 text-[12px]">
+                <div>
+                  <dt className="text-fg-muted font-medium mb-0.5">Primary Domain</dt>
+                  <dd className="font-mono text-fg text-[13px]">{dossier.domain}</dd>
+                </div>
+                <div>
+                  <dt className="text-fg-muted font-medium mb-0.5">Estimated Headcount</dt>
+                  <dd className="font-medium text-fg text-[13px]">{dossier.estimatedHeadcount}</dd>
+                </div>
+                <div>
+                  <dt className="text-fg-muted font-medium mb-0.5">Business Model</dt>
+                  <dd className="font-medium text-fg text-[13px] leading-snug">
+                    {dossier.estimatedBusinessModel}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-fg-muted font-medium mb-1">Industry Classification</dt>
+                  <dd className="flex flex-wrap gap-1.5">
+                    {dossier.industryTags.map((t, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded text-[11px] font-medium bg-subtle text-fg-secondary border border-border"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            {/* Quick Action Box */}
+            <div className="bg-subtle/50 border border-border rounded-lg p-5 text-[12px]">
+              <div className="flex items-center gap-1.5 font-semibold text-fg mb-1.5">
+                <Sparkles className="w-4 h-4 text-accent" />
+                <span>Recommended Action</span>
+              </div>
+              <p className="text-fg-secondary leading-relaxed mb-3">
+                Review the {dossier.top3PainPoints.length} detected operational friction points to personalize your pitch angle.
+              </p>
+              <button
+                onClick={() => setActiveTab("signals")}
+                className="w-full py-2 px-3 text-[12px] font-medium bg-fg text-surface rounded-md hover:bg-fg/90 transition-colors shadow-xs flex items-center justify-center gap-1.5"
+              >
+                <span>Inspect Pain Points</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: PAIN POINTS & OPPORTUNITIES */}
+      {activeTab === "signals" && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-surface border border-border rounded-lg p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-[14px] font-semibold text-fg">
+                  Identified Friction Signals &amp; Market Gaps
+                </h3>
+                <p className="text-[12px] text-fg-muted mt-0.5">
+                  Actionable weaknesses and operational bottlenecks extracted from positioning analysis.
+                </p>
+              </div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted bg-subtle px-2.5 py-1 rounded border border-border">
+                {dossier.top3PainPoints.length} Strategic Angles
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {dossier.top3PainPoints.map((pp, i) => {
+                const labels = ["High Friction Point", "Scaling Bottleneck", "Vendor Vulnerability"];
+                return (
+                  <div
+                    key={i}
+                    className="p-4 rounded-lg border border-border/80 bg-subtle/20 hover:bg-subtle/40 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-fg text-surface flex items-center justify-center text-[10px] font-bold">
+                          {i + 1}
+                        </span>
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-fg-secondary">
+                          {labels[i] || `Angle #${i + 1}`}
+                        </span>
+                      </div>
+                      <CopyBtn text={pp} label="Copy Angle" />
+                    </div>
+
+                    <p className="text-[13px] text-fg font-medium leading-relaxed mb-2.5 pl-7">
+                      {pp}
+                    </p>
+
+                    <div className="pl-7 pt-2 border-t border-border/60 flex items-start gap-2 text-[12px] text-fg-secondary">
+                      <span className="font-semibold text-fg shrink-0">Talk Track:</span>
+                      <span className="text-fg-secondary">
+                        Reference this operational friction to establish domain credibility in your first 2 sentences.
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: OUTREACH SEQUENCES */}
+      {activeTab === "outreach" && emails && emails.length > 0 && (
+        <div className="space-y-4 animate-fade-in">
+          {/* Outreach Toolbar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-subtle/50 border border-border rounded-lg text-[12px]">
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4 text-fg" />
+              <span className="font-semibold text-fg">Multi-Touch Cadence</span>
+              <span className="text-fg-muted">· {emails.length} Structured Messages</span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 cursor-pointer text-fg-secondary hover:text-fg">
+                <input
+                  type="checkbox"
+                  checked={personalize}
+                  onChange={(e) => setPersonalize(e.target.checked)}
+                  className="rounded border-border text-fg focus:ring-0"
+                />
+                <span>Inject Sender Persona ({settings.senderName})</span>
+              </label>
+
+              <button
+                onClick={() => {
+                  const allText = emails
+                    .map(
+                      (e, idx) =>
+                        `=== STEP ${idx + 1}: ${e.label} ===\nSubject: ${e.subject}\n\n${getPersonalizedBody(e.body)}\n`
+                    )
+                    .join("\n\n");
+                  navigator.clipboard.writeText(allText);
+                }}
+                className="px-2.5 py-1 text-[11px] font-medium text-fg bg-surface border border-border rounded-md hover:bg-subtle transition-colors inline-flex items-center gap-1"
+              >
+                <Copy className="w-3 h-3 text-fg-muted" />
+                <span>Copy Full Sequence</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {/* Step Selection Sidebar */}
+            <div className="md:col-span-1 space-y-1.5">
+              <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider block px-1 mb-2">
+                Sequence Cadence
+              </span>
+              {emails.map((email, idx) => {
+                const isSelected = activeEmailIdx === idx;
+                const days = ["Day 1", "Day 4", "Day 7", "Day 11"];
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveEmailIdx(idx)}
+                    className={`w-full text-left p-3 rounded-lg border text-[12px] transition-colors ${
+                      isSelected
+                        ? "bg-surface border-fg/80 shadow-xs"
+                        : "bg-surface/60 border-border/80 hover:bg-subtle text-fg-secondary"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-fg-muted">
+                        Touch {idx + 1} · {days[idx] || `Step ${idx + 1}`}
+                      </span>
+                      {isSelected && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-fg" />
+                      )}
+                    </div>
+                    <span className="font-semibold text-fg block text-[13px] leading-tight">
+                      {email.label}
+                    </span>
+                    <span className="text-[11px] text-fg-muted mt-1 block truncate">
+                      {email.type.replace("_", " ")}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Email Composer Preview */}
+            <div className="md:col-span-3 bg-surface border border-border rounded-lg p-6 shadow-xs space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-border">
+                <div>
+                  <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider">
+                    Touch #{activeEmailIdx + 1} · {emails[activeEmailIdx].label}
+                  </span>
+                  <div className="text-[12px] text-fg-muted mt-0.5">
+                    Estimated read time: ~45 seconds · Framework: PAS (Pain-Agitate-Solution)
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <CopyBtn
+                    text={`Subject: ${emails[activeEmailIdx].subject}\n\n${getPersonalizedBody(
+                      emails[activeEmailIdx].body
+                    )}`}
+                    label="Copy Email"
+                    variant="solid"
+                  />
+                </div>
+              </div>
+
+              {/* Subject Line */}
+              <div>
+                <label className="block text-[11px] font-semibold text-fg-muted uppercase tracking-wider mb-1.5">
+                  Subject Line
+                </label>
+                <div className="flex items-center justify-between p-3 rounded-md border border-border bg-subtle/30 text-[13px] font-medium text-fg">
+                  <span>{emails[activeEmailIdx].subject}</span>
+                  <CopyBtn text={emails[activeEmailIdx].subject} label="Copy" />
+                </div>
+              </div>
+
+              {/* Email Body */}
+              <div>
+                <label className="block text-[11px] font-semibold text-fg-muted uppercase tracking-wider mb-1.5">
+                  Message Content
+                </label>
+                <div className="p-4 rounded-md border border-border bg-subtle/20 text-[13px] text-fg leading-relaxed font-normal whitespace-pre-wrap font-sans">
+                  {getPersonalizedBody(emails[activeEmailIdx].body)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: TECH STACK & ARCHITECTURE */}
+      {activeTab === "tech" && (
+        <div className="bg-surface border border-border rounded-lg p-6 shadow-xs animate-fade-in space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-border">
+            <div>
+              <h3 className="text-[14px] font-semibold text-fg">
+                Detected Technology Stack &amp; Infrastructure
+              </h3>
+              <p className="text-[12px] text-fg-muted mt-0.5">
+                Inferred client-side frameworks, backend architecture, and third-party SaaS integrations.
+              </p>
+            </div>
+            <CopyBtn text={dossier.techTags.join(", ")} label="Copy Tech Stack" />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {dossier.techTags.map((tech, idx) => (
+              <div
+                key={idx}
+                className="p-3 rounded-md border border-border bg-subtle/30 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <Code2 className="w-3.5 h-3.5 text-fg-secondary" />
+                  <span className="text-[13px] font-medium text-fg">{tech}</span>
+                </div>
+                <span className="text-[10px] font-mono text-fg-muted uppercase">Verified</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: LIVE PIPELINE LOG */}
+      {activeTab === "activity" && (
+        <div className="bg-surface border border-border rounded-lg p-6 shadow-xs animate-fade-in">
+          <div className="flex items-center justify-between pb-3 border-b border-border mb-4">
+            <div>
+              <h3 className="text-[14px] font-semibold text-fg">Research Execution Log</h3>
+              <p className="text-[12px] text-fg-muted mt-0.5">
+                Audit trail of Jina DOM crawl, DOM extraction, and synthesis.
+              </p>
+            </div>
+            <span className="text-[11px] font-mono text-fg-muted">
+              Model: gemini-2.0-flash
+            </span>
+          </div>
+
+          <div className="max-w-xl">
+            <ActivityTimeline items={activities} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
