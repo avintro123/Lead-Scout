@@ -8,19 +8,26 @@ import {
   Check,
   ExternalLink,
   Download,
-  FileText,
   Sparkles,
   ArrowRight,
   Code2,
   Mail,
-  Flame,
   CheckCircle2,
-  Send,
-  Layers,
+  ChevronDown,
+  RotateCcw,
+  SlidersHorizontal,
+  Table,
+  FileSpreadsheet,
 } from "lucide-react";
 import { CompanyDossier, OutreachEmail, ActivityItem } from "@/lib/types";
 import ActivityTimeline from "./ActivityTimeline";
 import { getUserSettings } from "@/lib/storage";
+import {
+  generateSingleCompanyCSV,
+  triggerCSVDownload,
+  generateSubjectLineVariations,
+  SubjectVariation,
+} from "@/lib/export-csv";
 
 type ProfileTab = "overview" | "signals" | "outreach" | "tech" | "activity";
 
@@ -79,6 +86,17 @@ export default function CompanyProfile({
   const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
   const [activeEmailIdx, setActiveEmailIdx] = useState(0);
   const [personalize, setPersonalize] = useState(true);
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const [showVariations, setShowVariations] = useState(false);
+
+  // Editable sequence state
+  const [currentEmails, setCurrentEmails] = useState<OutreachEmail[]>(emails || []);
+
+  useEffect(() => {
+    if (emails) {
+      setCurrentEmails(emails);
+    }
+  }, [emails]);
 
   const settings = getUserSettings();
 
@@ -89,6 +107,36 @@ export default function CompanyProfile({
       return () => clearTimeout(timer);
     }
   }, [isResearching, activeTab, activities.length]);
+
+  const updateCurrentEmail = (field: "subject" | "body", value: string) => {
+    setCurrentEmails((prev) =>
+      prev.map((e, idx) => (idx === activeEmailIdx ? { ...e, [field]: value } : e))
+    );
+  };
+
+  const handleRevertCurrentEmail = () => {
+    if (!emails || !emails[activeEmailIdx]) return;
+    updateCurrentEmail("subject", emails[activeEmailIdx].subject);
+    updateCurrentEmail("body", emails[activeEmailIdx].body);
+  };
+
+  const handleApplySubjectVariation = (variation: SubjectVariation) => {
+    updateCurrentEmail("subject", variation.subject);
+    setShowVariations(false);
+  };
+
+  const insertToken = (token: string) => {
+    const active = currentEmails[activeEmailIdx];
+    if (!active) return;
+    updateCurrentEmail("body", `${active.body} ${token}`);
+  };
+
+  // Cold email health stats
+  const activeEmail = currentEmails[activeEmailIdx] || { subject: "", body: "", label: "", type: "cold_open" };
+  const wordCount = activeEmail.body
+    ? activeEmail.body.trim().split(/\s+/).filter(Boolean).length
+    : 0;
+  const estimatedSeconds = Math.max(15, Math.round(wordCount / 2.5));
 
   const handleExportMarkdown = () => {
     let md = `# Executive Dossier: ${dossier.companyName}\n\n`;
@@ -106,12 +154,12 @@ export default function CompanyProfile({
     md += `\n## Tech Stack & Architecture\n`;
     dossier.techTags.forEach((t) => (md += `- ${t}\n`));
 
-    if (emails && emails.length > 0) {
+    if (currentEmails && currentEmails.length > 0) {
       md += `\n---\n\n## Personalized Outreach Cadence\n\n`;
-      emails.forEach((e, idx) => {
+      currentEmails.forEach((e, idx) => {
         md += `### Touch ${idx + 1}: ${e.label} (${e.type})\n`;
         md += `**Subject:** ${e.subject}\n\n`;
-        md += `${e.body}\n\n---\n\n`;
+        md += `${getPersonalizedBody(e.body)}\n\n---\n\n`;
       });
     }
 
@@ -122,12 +170,22 @@ export default function CompanyProfile({
     a.download = `${dossier.companyName.toLowerCase().replace(/\s+/g, "-")}-dossier.md`;
     a.click();
     URL.revokeObjectURL(url);
+    setExportDropdownOpen(false);
+  };
+
+  const handleExportCSV = (format: "apollo" | "lemlist") => {
+    const csv = generateSingleCompanyCSV(dossier, currentEmails, format);
+    triggerCSVDownload(
+      csv,
+      `${dossier.companyName.toLowerCase().replace(/\s+/g, "-")}-${format}-campaign.csv`
+    );
+    setExportDropdownOpen(false);
   };
 
   const handleExportJSON = () => {
     const data = {
       dossier,
-      emails,
+      emails: currentEmails,
       exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -139,6 +197,7 @@ export default function CompanyProfile({
     a.download = `${dossier.companyName.toLowerCase().replace(/\s+/g, "-")}-intelligence.json`;
     a.click();
     URL.revokeObjectURL(url);
+    setExportDropdownOpen(false);
   };
 
   const getPersonalizedBody = (rawBody: string) => {
@@ -152,7 +211,7 @@ export default function CompanyProfile({
   const tabs: { id: ProfileTab; label: string; badge?: string | number }[] = [
     { id: "overview", label: "Executive Dossier" },
     { id: "signals", label: "Pain Points & Opportunities", badge: dossier.top3PainPoints.length },
-    { id: "outreach", label: "Outreach Sequences", badge: emails ? emails.length : undefined },
+    { id: "outreach", label: "Outreach Sequences", badge: currentEmails ? currentEmails.length : undefined },
     { id: "tech", label: "Tech Stack & Architecture", badge: dossier.techTags.length },
     {
       id: "activity",
@@ -160,6 +219,12 @@ export default function CompanyProfile({
       badge: isResearching ? "Running" : undefined,
     },
   ];
+
+  const subjectVariations = generateSubjectLineVariations(
+    dossier.companyName,
+    activeEmail.type,
+    dossier.top3PainPoints?.[0]
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -211,22 +276,60 @@ export default function CompanyProfile({
               <ExternalLink className="w-3 h-3 text-fg-muted" />
             </a>
 
-            <div className="flex items-center border border-border rounded-md divide-x divide-border bg-surface">
+            {/* Campaign Export Dropdown */}
+            <div className="relative">
               <button
-                onClick={handleExportMarkdown}
-                className="px-2.5 py-1.5 text-[12px] font-medium text-fg hover:bg-subtle transition-colors inline-flex items-center gap-1.5"
-                title="Download Markdown Report"
+                type="button"
+                onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
+                className="px-3 py-1.5 text-[12px] font-medium bg-fg text-surface rounded-md hover:bg-fg/90 transition-colors shadow-xs inline-flex items-center gap-1.5"
               >
-                <Download className="w-3 h-3 text-fg-muted" />
-                <span>Export (.md)</span>
+                <Download className="w-3.5 h-3.5" />
+                <span>Export Campaign</span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${exportDropdownOpen ? "rotate-180" : ""}`} />
               </button>
-              <button
-                onClick={handleExportJSON}
-                className="px-2 py-1.5 text-[12px] font-medium text-fg-secondary hover:text-fg hover:bg-subtle transition-colors"
-                title="Download JSON Intelligence"
-              >
-                JSON
-              </button>
+
+              {exportDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-60 bg-surface border border-border rounded-lg shadow-md z-50 p-1 divide-y divide-border/60">
+                  <div className="py-1">
+                    <button
+                      onClick={() => handleExportCSV("apollo")}
+                      className="w-full text-left px-3 py-2 text-[12px] rounded-md hover:bg-subtle text-fg flex items-center gap-2 transition-colors"
+                    >
+                      <Table className="w-3.5 h-3.5 text-accent" />
+                      <div>
+                        <span className="font-medium block">Apollo / Instantly CSV</span>
+                        <span className="text-[10px] text-fg-muted block">Formatted for cold sequences</span>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => handleExportCSV("lemlist")}
+                      className="w-full text-left px-3 py-2 text-[12px] rounded-md hover:bg-subtle text-fg flex items-center gap-2 transition-colors"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                      <div>
+                        <span className="font-medium block">Lemlist / Smartlead CSV</span>
+                        <span className="text-[10px] text-fg-muted block">Custom token variables</span>
+                      </div>
+                    </button>
+                  </div>
+
+                  <div className="py-1">
+                    <button
+                      onClick={handleExportMarkdown}
+                      className="w-full text-left px-3 py-1.5 text-[12px] rounded-md hover:bg-subtle text-fg-secondary hover:text-fg transition-colors"
+                    >
+                      Full Report (.md)
+                    </button>
+                    <button
+                      onClick={handleExportJSON}
+                      className="w-full text-left px-3 py-1.5 text-[12px] rounded-md hover:bg-subtle text-fg-secondary hover:text-fg transition-colors"
+                    >
+                      Raw Intelligence (.json)
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -453,15 +556,15 @@ export default function CompanyProfile({
         </div>
       )}
 
-      {/* TAB 3: OUTREACH SEQUENCES */}
-      {activeTab === "outreach" && emails && emails.length > 0 && (
+      {/* TAB 3: OUTREACH SEQUENCES (WITH INLINE EDITOR & A/B SUBJECT LINES) */}
+      {activeTab === "outreach" && currentEmails && currentEmails.length > 0 && (
         <div className="space-y-4 animate-fade-in">
           {/* Outreach Toolbar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-subtle/50 border border-border rounded-lg text-[12px]">
             <div className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-fg" />
               <span className="font-semibold text-fg">Multi-Touch Cadence</span>
-              <span className="text-fg-muted">· {emails.length} Structured Messages</span>
+              <span className="text-fg-muted">· {currentEmails.length} Editable Touches</span>
             </div>
 
             <div className="flex items-center gap-3">
@@ -472,12 +575,20 @@ export default function CompanyProfile({
                   onChange={(e) => setPersonalize(e.target.checked)}
                   className="rounded border-border text-fg focus:ring-0"
                 />
-                <span>Inject Sender Persona ({settings.senderName})</span>
+                <span>Inject Sender ({settings.senderName})</span>
               </label>
 
               <button
+                onClick={() => handleExportCSV("apollo")}
+                className="px-2.5 py-1 text-[11px] font-medium text-fg bg-surface border border-border rounded-md hover:bg-subtle transition-colors inline-flex items-center gap-1 shadow-2xs"
+              >
+                <Table className="w-3 h-3 text-accent" />
+                <span>Export Apollo CSV</span>
+              </button>
+
+              <button
                 onClick={() => {
-                  const allText = emails
+                  const allText = currentEmails
                     .map(
                       (e, idx) =>
                         `=== STEP ${idx + 1}: ${e.label} ===\nSubject: ${e.subject}\n\n${getPersonalizedBody(e.body)}\n`
@@ -485,10 +596,10 @@ export default function CompanyProfile({
                     .join("\n\n");
                   navigator.clipboard.writeText(allText);
                 }}
-                className="px-2.5 py-1 text-[11px] font-medium text-fg bg-surface border border-border rounded-md hover:bg-subtle transition-colors inline-flex items-center gap-1"
+                className="px-2.5 py-1 text-[11px] font-medium text-fg bg-surface border border-border rounded-md hover:bg-subtle transition-colors inline-flex items-center gap-1 shadow-2xs"
               >
                 <Copy className="w-3 h-3 text-fg-muted" />
-                <span>Copy Full Sequence</span>
+                <span>Copy All</span>
               </button>
             </div>
           </div>
@@ -499,13 +610,16 @@ export default function CompanyProfile({
               <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider block px-1 mb-2">
                 Sequence Cadence
               </span>
-              {emails.map((email, idx) => {
+              {currentEmails.map((email, idx) => {
                 const isSelected = activeEmailIdx === idx;
                 const days = ["Day 1", "Day 4", "Day 7", "Day 11"];
                 return (
                   <button
                     key={idx}
-                    onClick={() => setActiveEmailIdx(idx)}
+                    onClick={() => {
+                      setActiveEmailIdx(idx);
+                      setShowVariations(false);
+                    }}
                     className={`w-full text-left p-3 rounded-lg border text-[12px] transition-colors ${
                       isSelected
                         ? "bg-surface border-fg/80 shadow-xs"
@@ -531,48 +645,149 @@ export default function CompanyProfile({
               })}
             </div>
 
-            {/* Email Composer Preview */}
+            {/* Email Composer & Live Editor */}
             <div className="md:col-span-3 bg-surface border border-border rounded-lg p-6 shadow-xs space-y-5">
               <div className="flex items-center justify-between pb-3 border-b border-border">
-                <div>
-                  <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider">
-                    Touch #{activeEmailIdx + 1} · {emails[activeEmailIdx].label}
-                  </span>
-                  <div className="text-[12px] text-fg-muted mt-0.5">
-                    Estimated read time: ~45 seconds · Framework: PAS (Pain-Agitate-Solution)
+                <div className="flex items-center gap-3">
+                  <div>
+                    <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider block">
+                      Touch #{activeEmailIdx + 1} · {activeEmail.label}
+                    </span>
+                    <div className="flex items-center gap-2 mt-0.5 text-[12px] text-fg-secondary">
+                      <span className="font-medium text-fg">{wordCount} words</span>
+                      <span className="text-fg-faint">·</span>
+                      <span>~{estimatedSeconds}s read time</span>
+                      <span className="text-fg-faint">·</span>
+                      <span
+                        className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium ${
+                          wordCount <= 90
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : wordCount <= 125
+                            ? "bg-subtle text-fg-secondary border border-border"
+                            : "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}
+                      >
+                        {wordCount <= 90
+                          ? "Optimal Punchy Length"
+                          : wordCount <= 125
+                          ? "Standard Length"
+                          : "Consider Trimming"}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleRevertCurrentEmail}
+                    className="p-1.5 rounded text-fg-muted hover:text-fg hover:bg-subtle transition-colors"
+                    title="Revert to original AI draft"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+
                   <CopyBtn
-                    text={`Subject: ${emails[activeEmailIdx].subject}\n\n${getPersonalizedBody(
-                      emails[activeEmailIdx].body
-                    )}`}
+                    text={`Subject: ${activeEmail.subject}\n\n${getPersonalizedBody(activeEmail.body)}`}
                     label="Copy Email"
                     variant="solid"
                   />
                 </div>
               </div>
 
-              {/* Subject Line */}
+              {/* Subject Line & A/B Variations */}
               <div>
-                <label className="block text-[11px] font-semibold text-fg-muted uppercase tracking-wider mb-1.5">
-                  Subject Line
-                </label>
-                <div className="flex items-center justify-between p-3 rounded-md border border-border bg-subtle/30 text-[13px] font-medium text-fg">
-                  <span>{emails[activeEmailIdx].subject}</span>
-                  <CopyBtn text={emails[activeEmailIdx].subject} label="Copy" />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider">
+                    Subject Line
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowVariations(!showVariations)}
+                    className="text-[11px] text-accent hover:text-accent-hover font-medium inline-flex items-center gap-1 transition-colors"
+                  >
+                    <SlidersHorizontal className="w-3 h-3" />
+                    <span>{showVariations ? "Hide Variations" : "A/B Subject Line Variations"}</span>
+                  </button>
                 </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={activeEmail.subject}
+                    onChange={(e) => updateCurrentEmail("subject", e.target.value)}
+                    className="flex-1 px-3 py-2 text-[13px] font-medium bg-subtle/30 border border-border rounded-md text-fg focus:outline-none focus:border-fg/40 focus:ring-1 focus:ring-fg/20 transition-colors"
+                  />
+                  <CopyBtn text={activeEmail.subject} label="Copy" />
+                </div>
+
+                {/* A/B Subject Lines Modal/Dropdown */}
+                {showVariations && (
+                  <div className="mt-2.5 p-3 rounded-lg border border-border bg-subtle/40 space-y-2 animate-fade-in text-[12px]">
+                    <span className="text-[11px] font-semibold text-fg uppercase tracking-wider block">
+                      Alternative Strategic Hooks (Click to apply)
+                    </span>
+                    <div className="space-y-1.5">
+                      {subjectVariations.map((v, i) => (
+                        <div
+                          key={i}
+                          onClick={() => handleApplySubjectVariation(v)}
+                          className="p-2 rounded-md bg-surface border border-border/80 hover:border-fg/40 hover:bg-subtle/60 cursor-pointer transition-colors flex items-center justify-between group"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-subtle text-fg-secondary border border-border">
+                              {v.angle}
+                            </span>
+                            <span className="font-medium text-fg">{v.subject}</span>
+                          </div>
+                          <span className="text-[11px] text-accent font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                            Use this
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Email Body */}
+              {/* Editable Email Body */}
               <div>
-                <label className="block text-[11px] font-semibold text-fg-muted uppercase tracking-wider mb-1.5">
-                  Message Content
-                </label>
-                <div className="p-4 rounded-md border border-border bg-subtle/20 text-[13px] text-fg leading-relaxed font-normal whitespace-pre-wrap font-sans">
-                  {getPersonalizedBody(emails[activeEmailIdx].body)}
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider">
+                    Message Body (Editable)
+                  </label>
+                  <div className="flex items-center gap-1.5 text-[11px] text-fg-muted">
+                    <span>Quick Tokens:</span>
+                    <button
+                      type="button"
+                      onClick={() => insertToken("[Name]")}
+                      className="px-1.5 py-0.5 rounded bg-subtle hover:bg-border text-fg-secondary transition-colors"
+                    >
+                      + [Name]
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertToken(dossier.companyName)}
+                      className="px-1.5 py-0.5 rounded bg-subtle hover:bg-border text-fg-secondary transition-colors"
+                    >
+                      + [Company]
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertToken(settings.senderName || "[Your Name]")}
+                      className="px-1.5 py-0.5 rounded bg-subtle hover:bg-border text-fg-secondary transition-colors"
+                    >
+                      + [Sender]
+                    </button>
+                  </div>
                 </div>
+
+                <textarea
+                  rows={8}
+                  value={getPersonalizedBody(activeEmail.body)}
+                  onChange={(e) => updateCurrentEmail("body", e.target.value)}
+                  className="w-full p-4 rounded-md border border-border bg-subtle/20 text-[13px] text-fg leading-relaxed font-normal focus:outline-none focus:border-fg/40 focus:ring-1 focus:ring-fg/20 transition-colors font-sans resize-y"
+                />
               </div>
             </div>
           </div>
@@ -622,7 +837,7 @@ export default function CompanyProfile({
               </p>
             </div>
             <span className="text-[11px] font-mono text-fg-muted">
-              Model: gemini-2.0-flash
+              Model: gemini-3.5-flash
             </span>
           </div>
 

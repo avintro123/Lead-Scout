@@ -13,9 +13,16 @@ import {
   Filter,
   Plus,
   ArrowUpRight,
+  Table,
+  FileSpreadsheet,
 } from "lucide-react";
 import { LeadRecord, ScoutResult } from "@/lib/types";
 import { getLocalLeads, deleteLocalLead } from "@/lib/storage";
+import {
+  generateBulkCompaniesCSV,
+  generateSingleCompanyCSV,
+  triggerCSVDownload,
+} from "@/lib/export-csv";
 
 interface CompaniesViewProps {
   onLoadReport: (result: ScoutResult) => void;
@@ -128,6 +135,32 @@ export default function CompaniesView({
     URL.revokeObjectURL(url);
   };
 
+  const handleExportLeadCSV = (lead: LeadRecord) => {
+    const d = lead.dossier_json.dossier;
+    const emails = lead.dossier_json.emails || [];
+    const csv = generateSingleCompanyCSV(d, emails, "apollo");
+    triggerCSVDownload(
+      csv,
+      `${d.companyName.toLowerCase().replace(/\s+/g, "-")}-apollo.csv`
+    );
+  };
+
+  const handleExportBulkApolloCSV = () => {
+    const csv = generateBulkCompaniesCSV(filteredLeads, "apollo");
+    triggerCSVDownload(
+      csv,
+      `leadscout-apollo-campaign-${new Date().toISOString().slice(0, 10)}.csv`
+    );
+  };
+
+  const handleExportBulkLemlistCSV = () => {
+    const csv = generateBulkCompaniesCSV(filteredLeads, "lemlist");
+    triggerCSVDownload(
+      csv,
+      `leadscout-lemlist-campaign-${new Date().toISOString().slice(0, 10)}.csv`
+    );
+  };
+
   const handleExportAllJSON = () => {
     const blob = new Blob([JSON.stringify(leads, null, 2)], {
       type: "application/json",
@@ -165,15 +198,36 @@ export default function CompaniesView({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {leads.length > 0 && (
-            <button
-              onClick={handleExportAllJSON}
-              className="px-3 py-1.5 text-[12px] font-medium border border-border rounded-md bg-surface hover:bg-subtle text-fg transition-colors inline-flex items-center gap-1.5"
-            >
-              <Download className="w-3.5 h-3.5 text-fg-muted" />
-              <span>Export All (.json)</span>
-            </button>
+            <>
+              <button
+                onClick={handleExportBulkApolloCSV}
+                className="px-3 py-1.5 text-[12px] font-medium border border-border rounded-md bg-surface hover:bg-subtle text-fg transition-colors inline-flex items-center gap-1.5 shadow-2xs"
+                title="Export all leads as a CSV for Apollo.io / Instantly"
+              >
+                <Table className="w-3.5 h-3.5 text-accent" />
+                <span>Export Apollo CSV</span>
+              </button>
+
+              <button
+                onClick={handleExportBulkLemlistCSV}
+                className="px-3 py-1.5 text-[12px] font-medium border border-border rounded-md bg-surface hover:bg-subtle text-fg transition-colors inline-flex items-center gap-1.5 shadow-2xs"
+                title="Export all leads as a CSV for Lemlist / Smartlead"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Lemlist CSV</span>
+              </button>
+
+              <button
+                onClick={handleExportAllJSON}
+                className="px-2.5 py-1.5 text-[12px] font-medium border border-border rounded-md bg-surface hover:bg-subtle text-fg-secondary hover:text-fg transition-colors inline-flex items-center gap-1"
+                title="Download raw JSON archive"
+              >
+                <Download className="w-3 h-3 text-fg-muted" />
+                <span>JSON</span>
+              </button>
+            </>
           )}
 
           {onNewResearch && (
@@ -356,6 +410,14 @@ export default function CompaniesView({
                             title="Open Dossier"
                           >
                             <Eye className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            onClick={() => handleExportLeadCSV(lead)}
+                            className="p-1.5 rounded text-fg-muted hover:text-accent hover:bg-subtle transition-colors"
+                            title="Export Apollo CSV"
+                          >
+                            <Table className="w-3.5 h-3.5" />
                           </button>
 
                           <button
