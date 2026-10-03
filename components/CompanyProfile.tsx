@@ -18,10 +18,17 @@ import {
   SlidersHorizontal,
   Table,
   FileSpreadsheet,
+  Swords,
+  ShieldCheck,
+  AlertCircle,
+  Zap,
+  Target,
+  MessageSquareQuote,
 } from "lucide-react";
-import { CompanyDossier, OutreachEmail, ActivityItem } from "@/lib/types";
+import { CompanyDossier, OutreachEmail, ActivityItem, CompetitorItem, BattlecardSummary } from "@/lib/types";
 import ActivityTimeline from "./ActivityTimeline";
 import { getUserSettings } from "@/lib/storage";
+import { getFallbackDossier } from "@/lib/mock-data";
 import {
   generateSingleCompanyCSV,
   triggerCSVDownload,
@@ -29,7 +36,7 @@ import {
   SubjectVariation,
 } from "@/lib/export-csv";
 
-type ProfileTab = "overview" | "signals" | "outreach" | "tech" | "activity";
+type ProfileTab = "overview" | "signals" | "outreach" | "battlecards" | "tech" | "activity";
 
 interface CompanyProfileProps {
   dossier: CompanyDossier;
@@ -89,6 +96,8 @@ export default function CompanyProfile({
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [showVariations, setShowVariations] = useState(false);
 
+  const [selectedCompetitorIdx, setSelectedCompetitorIdx] = useState(0);
+
   // Editable sequence state
   const [currentEmails, setCurrentEmails] = useState<OutreachEmail[]>(emails || []);
 
@@ -131,6 +140,19 @@ export default function CompanyProfile({
     updateCurrentEmail("body", `${active.body} ${token}`);
   };
 
+  // Safe fallback for competitor intelligence & battlecards
+  const fallbackData = getFallbackDossier(dossier.domain);
+  const effectiveCompetitors: CompetitorItem[] =
+    dossier.competitors && dossier.competitors.length > 0
+      ? dossier.competitors
+      : fallbackData.dossier.competitors || [];
+
+  const effectiveBattlecardSummary: BattlecardSummary | undefined =
+    dossier.battlecardSummary || fallbackData.dossier.battlecardSummary;
+
+  const currentCompetitor =
+    effectiveCompetitors[selectedCompetitorIdx] || effectiveCompetitors[0];
+
   // Cold email health stats
   const activeEmail = currentEmails[activeEmailIdx] || { subject: "", body: "", label: "", type: "cold_open" };
   const wordCount = activeEmail.body
@@ -154,6 +176,27 @@ export default function CompanyProfile({
     md += `\n## Tech Stack & Architecture\n`;
     dossier.techTags.forEach((t) => (md += `- ${t}\n`));
 
+    if (effectiveCompetitors && effectiveCompetitors.length > 0) {
+      md += `\n---\n\n## Competitor Intelligence & Battlecards\n\n`;
+      if (effectiveBattlecardSummary?.whySwitchSummary) {
+        md += `### Why Switch to ${dossier.companyName}\n${effectiveBattlecardSummary.whySwitchSummary}\n\n`;
+      }
+      effectiveCompetitors.forEach((c, idx) => {
+        md += `### ${idx + 1}. ${c.name} (${c.domain})\n`;
+        md += `- **Category:** ${c.category}\n`;
+        md += `- **Market Position:** ${c.marketPosition}\n`;
+        md += `- **Pricing Model:** ${c.pricingModel}\n\n`;
+        md += `#### Where ${dossier.companyName} Wins:\n`;
+        c.whereTargetWins.forEach((w) => (md += `- ${w}\n`));
+        md += `\n#### Where ${c.name} Leads:\n`;
+        c.whereCompetitorWins.forEach((w) => (md += `- ${w}\n`));
+        md += `\n#### Objection Handling Script:\n`;
+        md += `> **Prospect Objection:** "${c.objectionScript.objection}"\n>\n`;
+        md += `> **Counter-Response:** "${c.objectionScript.response}"\n>\n`;
+        md += `> **⚡ Kill Point:** ${c.objectionScript.killPoint}\n\n---\n\n`;
+      });
+    }
+
     if (currentEmails && currentEmails.length > 0) {
       md += `\n---\n\n## Personalized Outreach Cadence\n\n`;
       currentEmails.forEach((e, idx) => {
@@ -173,6 +216,51 @@ export default function CompanyProfile({
     setExportDropdownOpen(false);
   };
 
+  const handleExportBattlecardOnlyMarkdown = () => {
+    let md = `# Sales Battlecard: ${dossier.companyName}\n\n`;
+    md += `**Domain:** ${dossier.domain}\n`;
+    md += `**Generated:** ${new Date().toLocaleString()}\n\n`;
+
+    if (effectiveBattlecardSummary?.whySwitchSummary) {
+      md += `## Why Switch to ${dossier.companyName}\n`;
+      md += `${effectiveBattlecardSummary.whySwitchSummary}\n\n`;
+    }
+
+    if (effectiveBattlecardSummary?.differentiatorPillars) {
+      md += `### Core Differentiator Pillars\n`;
+      effectiveBattlecardSummary.differentiatorPillars.forEach((p) => {
+        md += `- **${p.title}:** ${p.description}\n`;
+      });
+      md += `\n`;
+    }
+
+    if (effectiveCompetitors && effectiveCompetitors.length > 0) {
+      md += `## Competitor Radar & Head-to-Head Battlecards\n\n`;
+      effectiveCompetitors.forEach((c, idx) => {
+        md += `### ${idx + 1}. ${c.name} (${c.domain})\n`;
+        md += `- **Category:** ${c.category}\n`;
+        md += `- **Market Position:** ${c.marketPosition}\n`;
+        md += `- **Pricing Model:** ${c.pricingModel}\n\n`;
+        md += `#### Where ${dossier.companyName} Wins:\n`;
+        c.whereTargetWins.forEach((w) => (md += `- ${w}\n`));
+        md += `\n#### Where ${c.name} Leads:\n`;
+        c.whereCompetitorWins.forEach((w) => (md += `- ${w}\n`));
+        md += `\n#### Objection Handling Script:\n`;
+        md += `> **Prospect Objection:** "${c.objectionScript.objection}"\n>\n`;
+        md += `> **Counter-Response:** "${c.objectionScript.response}"\n>\n`;
+        md += `> **⚡ Kill Point:** ${c.objectionScript.killPoint}\n\n---\n\n`;
+      });
+    }
+
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${dossier.companyName.toLowerCase().replace(/\s+/g, "-")}-battlecard.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleExportCSV = (format: "apollo" | "lemlist") => {
     const csv = generateSingleCompanyCSV(dossier, currentEmails, format);
     triggerCSVDownload(
@@ -185,6 +273,8 @@ export default function CompanyProfile({
   const handleExportJSON = () => {
     const data = {
       dossier,
+      competitors: effectiveCompetitors,
+      battlecard: effectiveBattlecardSummary,
       emails: currentEmails,
       exportedAt: new Date().toISOString(),
     };
@@ -212,6 +302,7 @@ export default function CompanyProfile({
     { id: "overview", label: "Executive Dossier" },
     { id: "signals", label: "Pain Points & Opportunities", badge: dossier.top3PainPoints.length },
     { id: "outreach", label: "Outreach Sequences", badge: currentEmails ? currentEmails.length : undefined },
+    { id: "battlecards", label: "Competitor Radar & Battlecards", badge: effectiveCompetitors.length },
     { id: "tech", label: "Tech Stack & Architecture", badge: dossier.techTags.length },
     {
       id: "activity",
@@ -794,7 +885,331 @@ export default function CompanyProfile({
         </div>
       )}
 
-      {/* TAB 4: TECH STACK & ARCHITECTURE */}
+      {/* TAB 4: COMPETITOR RADAR & SALES BATTLECARDS */}
+      {activeTab === "battlecards" && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Header Banner */}
+          <div className="bg-surface border border-border rounded-lg p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-subtle text-fg border border-border">
+                  <Swords className="w-3 h-3 text-fg-secondary" />
+                  Competitive Intelligence Engine
+                </span>
+                <span className="text-[11px] text-fg-muted font-mono">
+                  {effectiveCompetitors.length} Key Competitors Tracked
+                </span>
+              </div>
+              <h2 className="text-[16px] font-semibold text-fg">
+                Competitor Radar &amp; Objection Battlecards
+              </h2>
+              <p className="text-[12px] text-fg-muted mt-0.5">
+                Head-to-head differentiation vectors, ICP comparison matrix, and battle-tested scripts for objection handling.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleExportBattlecardOnlyMarkdown}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium bg-subtle hover:bg-border text-fg rounded-md transition-colors border border-border shadow-2xs"
+              >
+                <Download className="w-3.5 h-3.5 text-fg-secondary" />
+                <span>Export Battlecard (.md)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Executive Switching Catalyst Card */}
+          {effectiveBattlecardSummary && (
+            <div className="bg-surface border border-border rounded-lg p-5 shadow-xs relative overflow-hidden">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4 text-accent" />
+                  <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider">
+                    Core Switching Catalyst vs Alternatives
+                  </span>
+                </div>
+                <CopyBtn text={effectiveBattlecardSummary.whySwitchSummary} label="Copy Thesis" />
+              </div>
+
+              <p className="text-[14px] text-fg leading-relaxed font-normal bg-subtle/30 p-3.5 rounded-md border border-border/60">
+                &ldquo;{effectiveBattlecardSummary.whySwitchSummary}&rdquo;
+              </p>
+
+              {/* Differentiator Pillars Grid */}
+              {effectiveBattlecardSummary.differentiatorPillars && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+                  {effectiveBattlecardSummary.differentiatorPillars.map((pillar, pIdx) => (
+                    <div
+                      key={pIdx}
+                      className="p-3.5 rounded-md border border-border/80 bg-subtle/20 space-y-1.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-subtle border border-border flex items-center justify-center text-[11px] font-semibold text-fg shrink-0">
+                          {pIdx + 1}
+                        </span>
+                        <h4 className="text-[13px] font-semibold text-fg">{pillar.title}</h4>
+                      </div>
+                      <p className="text-[12px] text-fg-secondary leading-relaxed pl-7">
+                        {pillar.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Competitor Selector Pills */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider">
+                Select Competitor for Deep Dive
+              </span>
+              <span className="text-[11px] text-fg-muted">
+                Showing head-to-head matchup against {currentCompetitor?.name || "Competitor"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {effectiveCompetitors.map((comp, idx) => {
+                const isSelected = selectedCompetitorIdx === idx;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setSelectedCompetitorIdx(idx)}
+                    className={`p-3.5 rounded-lg border text-left transition-all relative ${
+                      isSelected
+                        ? "bg-surface border-fg shadow-xs ring-1 ring-fg/20"
+                        : "bg-surface border-border hover:border-border/80 hover:bg-subtle/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[13px] font-semibold text-fg flex items-center gap-1.5">
+                        {comp.name}
+                      </span>
+                      <span className="text-[10px] font-mono text-fg-muted px-1.5 py-0.5 rounded bg-subtle border border-border/60">
+                        {comp.domain}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-fg-secondary block truncate font-medium">
+                      {comp.category}
+                    </span>
+                    {isSelected && (
+                      <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-accent" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Selected Competitor Deep Dive */}
+          {currentCompetitor && (
+            <div className="space-y-6">
+              {/* Matchup Overview Card */}
+              <div className="bg-surface border border-border rounded-lg p-5 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-subtle border border-border flex items-center justify-center text-fg font-semibold text-sm">
+                      {currentCompetitor.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-[15px] font-semibold text-fg">
+                          {currentCompetitor.name}
+                        </h3>
+                        <a
+                          href={`https://${currentCompetitor.domain}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-fg-muted hover:text-fg inline-flex items-center gap-1"
+                        >
+                          <span>{currentCompetitor.domain}</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      </div>
+                      <span className="text-[11px] text-fg-secondary font-medium">
+                        {currentCompetitor.category}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded text-[11px] font-medium bg-subtle border border-border text-fg-secondary">
+                      Pricing: {currentCompetitor.pricingModel}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Market Position Quote */}
+                <div className="text-[12px] text-fg-secondary bg-subtle/30 p-3 rounded-md border border-border/60 flex items-start gap-2">
+                  <MessageSquareQuote className="w-4 h-4 text-fg-muted shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-fg">Market Positioning: </span>
+                    <span>{currentCompetitor.marketPosition}</span>
+                  </div>
+                </div>
+
+                {/* 2-Column Advantage Matrix */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {/* Where Target Wins */}
+                  <div className="p-4 rounded-lg border border-emerald-200/60 bg-emerald-50/20 dark:bg-emerald-950/10 space-y-2.5">
+                    <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-semibold text-[12px]">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Where {dossier.companyName} Wins (Your Edge)</span>
+                    </div>
+                    <ul className="space-y-2 text-[12.5px] text-fg leading-relaxed">
+                      {currentCompetitor.whereTargetWins.map((win, wIdx) => (
+                        <li key={wIdx} className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-2 shrink-0" />
+                          <span>{win}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Where Competitor Wins / Gaps */}
+                  <div className="p-4 rounded-lg border border-border bg-subtle/30 space-y-2.5">
+                    <div className="flex items-center gap-1.5 text-fg-secondary font-semibold text-[12px]">
+                      <AlertCircle className="w-4 h-4 text-fg-muted" />
+                      <span>Where {currentCompetitor.name} Leads (Gaps to Navigate)</span>
+                    </div>
+                    <ul className="space-y-2 text-[12.5px] text-fg-secondary leading-relaxed">
+                      {currentCompetitor.whereCompetitorWins.map((edge, eIdx) => (
+                        <li key={eIdx} className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-fg-muted mt-2 shrink-0" />
+                          <span>{edge}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Objection Handling Weapon */}
+              <div className="bg-surface border-2 border-border/90 rounded-lg p-5 shadow-xs space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider">
+                      Sales Battlecard Weapon: Objection Counter-Script
+                    </span>
+                  </div>
+                  <CopyBtn
+                    text={`Objection: "${currentCompetitor.objectionScript.objection}"\n\nCounter-Script:\n"${currentCompetitor.objectionScript.response}"\n\nKill Point: ${currentCompetitor.objectionScript.killPoint}`}
+                    label="Copy Script"
+                  />
+                </div>
+
+                {/* The Prospect's Objection */}
+                <div className="p-3.5 rounded-md bg-subtle/50 border border-border">
+                  <span className="text-[11px] font-semibold text-fg-muted uppercase tracking-wider block mb-1">
+                    When the prospect says:
+                  </span>
+                  <p className="text-[13.5px] font-semibold text-fg italic">
+                    &ldquo;{currentCompetitor.objectionScript.objection}&rdquo;
+                  </p>
+                </div>
+
+                {/* The Counter-Script */}
+                <div className="p-4 rounded-md bg-surface border border-border shadow-2xs space-y-2">
+                  <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
+                    Recommended Counter-Framing (Acknowledge &rarr; Reframe &rarr; Wedge):
+                  </span>
+                  <p className="text-[13px] text-fg leading-relaxed">
+                    {currentCompetitor.objectionScript.response}
+                  </p>
+                </div>
+
+                {/* Kill Point Banner */}
+                <div className="flex items-center justify-between gap-3 p-3 rounded-md bg-subtle border border-border text-[12px]">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span className="font-semibold text-fg">Kill Point:</span>
+                    <span className="text-fg-secondary font-medium">
+                      {currentCompetitor.objectionScript.killPoint}
+                    </span>
+                  </div>
+                  <CopyBtn text={currentCompetitor.objectionScript.killPoint} label="Copy Kill Point" />
+                </div>
+              </div>
+
+              {/* Competitive Matrix Comparison Table */}
+              <div className="bg-surface border border-border rounded-lg p-5 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-[14px] font-semibold text-fg">
+                      Side-by-Side Competitive Matrix
+                    </h4>
+                    <p className="text-[12px] text-fg-muted mt-0.5">
+                      Head-to-head comparison across pricing model, advantages, and sales positioning wedge.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto no-scrollbar">
+                  <table className="w-full text-left border-collapse text-[12px]">
+                    <thead>
+                      <tr className="border-b border-border text-fg-muted uppercase text-[10px] tracking-wider bg-subtle/30">
+                        <th className="py-2.5 px-3 font-semibold">Vendor / Platform</th>
+                        <th className="py-2.5 px-3 font-semibold">Category</th>
+                        <th className="py-2.5 px-3 font-semibold">Pricing Model</th>
+                        <th className="py-2.5 px-3 font-semibold">Primary Advantage</th>
+                        <th className="py-2.5 px-3 font-semibold">Key Vulnerability</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      <tr className="bg-subtle/10 font-medium">
+                        <td className="py-3 px-3 text-fg font-semibold flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-accent" />
+                          <span>{dossier.companyName} (Target)</span>
+                        </td>
+                        <td className="py-3 px-3 text-fg-secondary">
+                          {dossier.industryTags[0] || "Core Solution"}
+                        </td>
+                        <td className="py-3 px-3 text-fg-secondary">
+                          {dossier.estimatedBusinessModel}
+                        </td>
+                        <td className="py-3 px-3 text-emerald-700 dark:text-emerald-400">
+                          {dossier.valuePropositions[0] || "High Product Craft"}
+                        </td>
+                        <td className="py-3 px-3 text-fg-muted">
+                          {dossier.top3PainPoints[0]?.slice(0, 50)}...
+                        </td>
+                      </tr>
+
+                      {effectiveCompetitors.map((comp, cIdx) => (
+                        <tr key={cIdx} className="hover:bg-subtle/20 transition-colors">
+                          <td className="py-3 px-3 font-semibold text-fg">
+                            {comp.name}
+                          </td>
+                          <td className="py-3 px-3 text-fg-secondary">
+                            {comp.category}
+                          </td>
+                          <td className="py-3 px-3 text-fg-secondary">
+                            {comp.pricingModel}
+                          </td>
+                          <td className="py-3 px-3 text-fg-secondary">
+                            {comp.whereCompetitorWins[0] || "Established Market Base"}
+                          </td>
+                          <td className="py-3 px-3 text-amber-700 dark:text-amber-400">
+                            {comp.whereTargetWins[0] || "Slower time to value"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 5: TECH STACK & ARCHITECTURE */}
       {activeTab === "tech" && (
         <div className="bg-surface border border-border rounded-lg p-6 shadow-xs animate-fade-in space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-border">

@@ -1,4 +1,11 @@
-import { CompanyDossier, OutreachEmail, ScoutResult, OutreachObjective } from "./types";
+import {
+  CompanyDossier,
+  OutreachEmail,
+  ScoutResult,
+  OutreachObjective,
+  CompetitorItem,
+  BattlecardSummary,
+} from "./types";
 
 export interface CompanyPreset {
   domain: string;
@@ -41,6 +48,88 @@ export const PRESET_COMPANIES: Record<string, CompanyPreset> = {
         "Stripe Atlas (Incorporation)",
         "Stripe Financial Connections",
       ],
+      competitors: [
+        {
+          name: "Adyen",
+          domain: "adyen.com",
+          category: "Primary Enterprise Alternative",
+          marketPosition: "Unified global omnichannel payments platform favoured by massive enterprises (McDonald's, Spotify, Uber) for lower interchange fees and unified POS.",
+          whereTargetWins: [
+            "Superior developer experience and time-to-first-transaction (hours vs weeks)",
+            "Stripe Connect marketplace onboarding and multi-party payout automation",
+            "Self-serve transparency without minimum volume commitments",
+          ],
+          whereCompetitorWins: [
+            "Interchange++ pricing with lower take rates on massive global volume",
+            "Direct acquiring bank status in key jurisdictions with physical in-store terminal fleet",
+          ],
+          pricingModel: "Interchange++ pricing with tiered volume thresholds (custom quote)",
+          objectionScript: {
+            objection: "We already use Adyen because our finance team negotiated lower interchange rates for our volume.",
+            response: "Completely understand — Adyen is formidable for straightforward point-of-sale volume. Where companies partner with us is when their product team wants to launch usage-based subscriptions or marketplace splits, which take quarters of custom dev on Adyen. We can run alongside your core processing without disrupting negotiated processing rates.",
+            killPoint: "Keep negotiated interchange rates while unlocking rapid product velocity.",
+          },
+        },
+        {
+          name: "Checkout.com",
+          domain: "checkout.com",
+          category: "High-Growth Global Challenger",
+          marketPosition: "Cloud-native payments processor focusing on enterprise digital merchants with modular acquiring and granular acceptance telemetry.",
+          whereTargetWins: [
+            "Vastly larger financial suite (Billing, Tax, Invoicing, Corporate Cards, Atlas)",
+            "Stripe Radar ML models trained on hundreds of billions in global transaction history",
+            "Unrivalled third-party SaaS ecosystem & turnkey pre-built integrations",
+          ],
+          whereCompetitorWins: [
+            "Deep domestic processing in MENA and APAC regions",
+            "Dedicated account engineering and custom acceptance optimization consulting",
+          ],
+          pricingModel: "Custom volume-based pricing with modular capability licensing",
+          objectionScript: {
+            objection: "We're evaluating Checkout.com for their regional processing fees in international markets.",
+            response: "Checkout.com has strong regional routing in specific markets. However, companies adopting them find themselves having to rebuild their entire billing and tax infrastructure from scratch. Stripe eliminates that hidden engineering cost by packaging local payment methods, automated tax collection, and fraud prevention into a unified pipeline.",
+            killPoint: "Eliminates multi-vendor fragmentation and tax compliance overhead.",
+          },
+        },
+        {
+          name: "Paddle",
+          domain: "paddle.com",
+          category: "Merchant of Record (MoR) Alternative",
+          marketPosition: "Merchant of Record platform handling global tax compliance, liabilities, and billing for digital SaaS companies.",
+          whereTargetWins: [
+            "Full control over customer data, direct merchant accounts, and customized checkout branding",
+            "Significantly lower take rate (2.9% + 30¢ vs Paddle's 5% + 50¢)",
+            "Complete enterprise flexibility for bespoke contract billing and hybrid sales-assisted tiers",
+          ],
+          whereCompetitorWins: [
+            "Takes on legal liability for global VAT/sales tax filing automatically as Merchant of Record",
+            "Simpler compliance for early-stage digital product sellers without local tax entities",
+          ],
+          pricingModel: "Flat 5% + 50¢ per transaction (all-inclusive Merchant of Record)",
+          objectionScript: {
+            objection: "We use Paddle so we don't have to deal with global sales tax and VAT filing.",
+            response: "That convenience makes total sense at early stage. But as you pass $5M ARR, that 5% take rate becomes an immense margin penalty ($100k+ in unnecessary fees). With Stripe Tax and automated reporting, you retain full ownership of your customer relationships and recover over 2% directly to your bottom line.",
+            killPoint: "Recover 2%+ gross margin while retaining automated tax calculation.",
+          },
+        },
+      ],
+      battlecardSummary: {
+        whySwitchSummary: "While competitors compete on raw interchange basis points or take on reseller liability at a steep 5% cut, Stripe offers the only unified financial infrastructure that scales seamlessly from developer MVP to Fortune 500 multi-entity commerce without re-architecting your stack.",
+        differentiatorPillars: [
+          {
+            title: "Ecosystem Velocity",
+            description: "Launch new monetisation models (usage-based, seats, add-ons) in days rather than quarters of bespoke engineering.",
+          },
+          {
+            title: "Fraud Prevention at Scale",
+            description: "Stripe Radar ML is trained across millions of global businesses, lowering false positives and boosting card authorization rates.",
+          },
+          {
+            title: "Developer First, Enterprise Ready",
+            description: "Complete REST & GraphQL APIs with 99.999% uptime, webhooks idempotency, and comprehensive SDKs in every language.",
+          },
+        ],
+      },
     },
     emails: {
       client_acquisition: [
@@ -217,6 +306,88 @@ Best,
         "Custom Workflow Automations",
         "Workspace API & Connectors",
       ],
+      competitors: [
+        {
+          name: "Coda",
+          domain: "coda.io",
+          category: "Programmable Doc Alternative",
+          marketPosition: "All-in-one doc platform emphasizing formula computation, button actions, and two-way integration packs.",
+          whereTargetWins: [
+            "Massive consumer & creator network effect with 30M+ active workspace users",
+            "Significantly faster rendering and sleeker, more intuitive documentation UX",
+            "Turnkey Notion AI search across connected Slack, Google Drive, and GitHub workspaces",
+          ],
+          whereCompetitorWins: [
+            "Advanced programmatic formulas, procedural automations, and interactive buttons",
+            "Maker-only billing model where viewers and editors are free",
+          ],
+          pricingModel: "Maker-based pricing (only doc creators pay $10-$30/mo)",
+          objectionScript: {
+            objection: "We chose Coda because only 'makers' pay, saving us money on team seats.",
+            response: "The maker model sounds attractive until you realize team members hesitate to create docs or organize workflows because they aren't licensed makers. Notion's transparent seat pricing democratizes documentation across your entire company, leading to 3x higher cross-functional contribution rates.",
+            killPoint: "Eliminates documentation bottlenecks caused by tiered creator licensing.",
+          },
+        },
+        {
+          name: "Confluence",
+          domain: "atlassian.com",
+          category: "Legacy Enterprise Wiki",
+          marketPosition: "Atlassian's established enterprise documentation platform deeply coupled with Jira Software and enterprise IT procurement.",
+          whereTargetWins: [
+            "Beloved by employees — 80%+ higher voluntary daily active usage compared to Confluence",
+            "Fluid drag-and-drop workspace layout without rigid page hierarchies",
+            "Unified relational databases for tasks, PRDs, roadmaps, and wikis in one surface",
+          ],
+          whereCompetitorWins: [
+            "Native tight coupling with Jira issue workflows and Atlassian Access SSO",
+            "Strict enterprise IT compliance, audit archiving, and enterprise licensing bundles",
+          ],
+          pricingModel: "$5.75 - $11 per user/month, bundled in Atlassian enterprise contracts",
+          objectionScript: {
+            objection: "Confluence comes bundled with our Jira enterprise contract, so it's effectively free.",
+            response: "A wiki is only valuable if people actually read and update it. Most companies find Confluence becomes a stale graveyard of outdated PDFs. Notion delivers a 4x increase in weekly doc updates, meaning your engineers, PMs, and leadership actually work off live source-of-truth knowledge.",
+            killPoint: "Transforms a dead archive into an active, living company operating system.",
+          },
+        },
+        {
+          name: "Slite",
+          domain: "slite.com",
+          category: "Lightweight Knowledge Base",
+          marketPosition: "Minimalist team knowledge base with AI search tailored specifically for remote teams.",
+          whereTargetWins: [
+            "Full relational project databases and sprint tracking alongside documentation",
+            "Extensive third-party template and connector marketplace",
+            "Enterprise scalability for multi-team organizational charts",
+          ],
+          whereCompetitorWins: [
+            "Hyper-focused, distraction-free minimalist writing UI",
+            "Built-in doc verification and review reminder cadences",
+          ],
+          pricingModel: "$8 - $12.50 per user/month",
+          objectionScript: {
+            objection: "Slite is simpler and has built-in verification to keep docs fresh.",
+            response: "Slite is great for pure notes, but it requires you to run separate tools for task management, roadmaps, and sprint boards. Notion consolidates documentation and execution into a single relational ecosystem, saving $40/user/mo in tool overlap.",
+            killPoint: "Consolidates documentation and project execution into one platform.",
+          },
+        },
+      ],
+      battlecardSummary: {
+        whySwitchSummary: "While legacy tools like Confluence become stagnant silos and niche docs lack project management power, Notion is the only connected workspace where organizational knowledge and daily project execution live in seamless, beautiful synchrony.",
+        differentiatorPillars: [
+          {
+            title: "Universal Adoption",
+            description: "An intuitive interface that non-technical marketing and design teams love as much as engineering.",
+          },
+          {
+            title: "Relational Knowledge Graph",
+            description: "Connect project tasks directly to specs, meeting notes, customer feedback, and roadmaps without context switching.",
+          },
+          {
+            title: "Integrated Enterprise AI",
+            description: "Ask questions and synthesize insights instantly across your company's entire historical knowledge base.",
+          },
+        ],
+      },
     },
     emails: {
       client_acquisition: [
@@ -349,6 +520,88 @@ Best,
         "Linear Insights & Analytics",
         "Mobile & Desktop Native Clients",
       ],
+      competitors: [
+        {
+          name: "Jira Software",
+          domain: "atlassian.com",
+          category: "Legacy Enterprise Standard",
+          marketPosition: "The ubiquitous, highly configurable enterprise issue tracker and project management platform owned by Atlassian.",
+          whereTargetWins: [
+            "Sub-50ms keyboard-first interaction speed vs Jira's bloated 3-5 second page loads",
+            "Opinionated modern software methodology that eliminates endless configuration paralysis",
+            "Engineers genuinely love using Linear — eliminates ticket resistance and status staleness",
+          ],
+          whereCompetitorWins: [
+            "Deep custom field scripting, workflow triggers, and legacy IT governance controls",
+            "Atlassian Marketplace with thousands of legacy compliance plugins",
+          ],
+          pricingModel: "$8.15 - $16 per user/month, with extensive enterprise tiering",
+          objectionScript: {
+            objection: "We have to use Jira because our enterprise IT and compliance teams require custom workflow schemes.",
+            response: "Enterprise IT loves Jira's configuration, but engineering teams hate using it — leading to out-of-date tickets and fragmented Slack updates. Linear was built specifically to eliminate that friction. Teams moving from Jira see a 30% reduction in cycle planning time and 100% engineer adoption within the first week.",
+            killPoint: "Eliminates ticket latency and restores developer velocity.",
+          },
+        },
+        {
+          name: "Asana",
+          domain: "asana.com",
+          category: "Cross-Functional Work Management",
+          marketPosition: "Broad horizontal project management suite aimed at non-technical business teams, operations, and marketing.",
+          whereTargetWins: [
+            "Engineered specifically for software development workflows (Git branch sync, PR states, cycle rollups)",
+            "Native offline sync engine and instantaneous local-first keyboard shortcuts",
+            "Zero clutter — avoids generic enterprise bloat that slows down development sprints",
+          ],
+          whereCompetitorWins: [
+            "Superior non-technical marketing campaign templates, goal hierarchies, and workload balancing",
+            "Broader adoption among HR, marketing, and legal departments",
+          ],
+          pricingModel: "$10.99 - $24.99 per user/month",
+          objectionScript: {
+            objection: "Our entire company uses Asana for marketing and operations, so engineering stays on it too.",
+            response: "Asana works well for marketing campaigns, but forcing software teams to track bugs and sprints in a generic task tool creates severe engineering drag. Linear connects bidirectionally to GitHub/GitLab, so engineers manage issues from their terminal or IDE without disrupting your company's broader Asana workflows.",
+            killPoint: "Developer-first craft with automated GitHub bi-directional sync.",
+          },
+        },
+        {
+          name: "Height",
+          domain: "height.app",
+          category: "AI-Autonomous Issue Tracker",
+          marketPosition: "Modern collaborative project tool emphasizing AI-autonomous bug triaging and spreadsheet-like flexibility.",
+          whereTargetWins: [
+            "Proven industry standard among world-class tech companies (Vercel, Retool, Ramp, Cash App)",
+            "Obsessive focus on local-first speed, sub-100ms response time, and offline resilience",
+            "Robust enterprise roadmap and initiative rollup capabilities",
+          ],
+          whereCompetitorWins: [
+            "Autonomous AI agents that auto-triage incoming tickets and assign owners",
+            "Spreadsheet-native inline editing paradigm",
+          ],
+          pricingModel: "$6.99 - $11.99 per user/month",
+          objectionScript: {
+            objection: "We are intrigued by Height's autonomous AI triaging features.",
+            response: "Height has interesting AI automations, but Linear gives you the rock-solid reliability, battle-tested Git workflows, and offline-first speed that high-performance engineering teams require day in and day out. Linear's focused cycles and initiative roadmaps ensure your team ships on schedule without AI hallucinations.",
+            killPoint: "Rock-solid reliability and the benchmark standard for high-craft engineering.",
+          },
+        },
+      ],
+      battlecardSummary: {
+        whySwitchSummary: "While legacy platforms like Jira bog teams down in endless configuration and slow page loads, Linear restores pure developer velocity with keyboard-first speed, local-first sync, and opinionated workflows designed for high-craft software teams.",
+        differentiatorPillars: [
+          {
+            title: "Sub-50ms Speed",
+            description: "Local-first architecture ensures every interaction, issue creation, and filter happens instantaneously.",
+          },
+          {
+            title: "Opinionated Engineering Workflows",
+            description: "Cycles, automated triage, and roadmap initiatives streamline development without configuration overhead.",
+          },
+          {
+            title: "Zero-Latency Developer Adoption",
+            description: "Engineers love using the tool, eliminating the age-old problem of stale and abandoned sprint boards.",
+          },
+        ],
+      },
     },
     emails: {
       client_acquisition: [
@@ -517,6 +770,67 @@ export function getFallbackDossier(
       "Enterprise Security & Access Controls",
       "Third-Party Ecosystem Integrations",
     ],
+    competitors: [
+      {
+        name: `${companyNameFromDomain} Direct Alternative`,
+        domain: "market-alternative.com",
+        category: "Primary Category Challenger",
+        marketPosition: `Leading alternative provider in the ${cleanDomain} competitive sector offering established horizontal capabilities.`,
+        whereTargetWins: [
+          `Specialized workflow automation built specifically for ${companyNameFromDomain}'s target ICP`,
+          "Modern API-first architecture enabling significantly faster time-to-value",
+          "Transparent pricing with higher self-serve activation rates",
+        ],
+        whereCompetitorWins: [
+          "Broader legacy market presence and existing vendor footprint",
+          "Larger historical professional services catalog",
+        ],
+        pricingModel: "Annual enterprise contract with custom tiering",
+        objectionScript: {
+          objection: "We already have an annual agreement with the market incumbent.",
+          response: `Completely understand — incumbents are frequently grandfathered in. Where companies bring in ${companyNameFromDomain} is to solve the specific bottlenecks where legacy tools require months of custom services. We can run in parallel on a single initiative to prove ROI before your next renewal.`,
+          killPoint: "Fast implementation and rapid ROI validation without vendor lock-in.",
+        },
+      },
+      {
+        name: "Legacy Enterprise Suite",
+        domain: "enterprise-incumbent.com",
+        category: "Legacy Incumbent",
+        marketPosition: "Traditional enterprise conglomerate offering bundled software across multiple departmental silos.",
+        whereTargetWins: [
+          "Zero maintenance overhead and modern cloud-native deployment",
+          "Lightweight user experience with 3x higher end-user adoption",
+          "Rapid feature shipping cycle without waiting for multi-year upgrade cycles",
+        ],
+        whereCompetitorWins: [
+          "Bundled master service agreements across IT procurement departments",
+          "Extensive on-premise legacy deployment certifications",
+        ],
+        pricingModel: "Bundled multi-year enterprise license",
+        objectionScript: {
+          objection: "Our IT department mandates using our existing bundled enterprise vendor.",
+          response: `Bundled tools seem cost-effective on paper, but when users abandon them due to complexity, the hidden productivity loss is massive. ${companyNameFromDomain} delivers 85%+ voluntary adoption and integrates directly with your existing infrastructure.`,
+          killPoint: "High voluntary user adoption that actually solves the operational gap.",
+        },
+      },
+    ],
+    battlecardSummary: {
+      whySwitchSummary: `While legacy alternatives lock customers into cumbersome multi-year contracts with slow implementation cycles, ${companyNameFromDomain} delivers modern, agile time-to-value with higher voluntary team adoption and seamless technical integrations.`,
+      differentiatorPillars: [
+        {
+          title: "Agile Time-to-Value",
+          description: "Deploy and see tangible operational results in days rather than quarters of professional services.",
+        },
+        {
+          title: "Modern API Architecture",
+          description: "Seamlessly integrate with contemporary cloud stacks without expensive bespoke middleware.",
+        },
+        {
+          title: "Measurable ROI",
+          description: "High adoption rates and streamlined workflows directly reduce operational overhead.",
+        },
+      ],
+    },
   };
 
   const dynamicEmails: OutreachEmail[] = [

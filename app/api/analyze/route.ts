@@ -56,8 +56,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Phase 1: Analyze the company
-    const analysisPrompt = `You are an expert B2B market analyst. Analyze the following website content and return a strictly typed JSON object.
+    // Phase 1: Analyze the company & competitive landscape
+    const analysisPrompt = `You are an expert B2B market analyst and competitive intelligence strategist. Analyze the following website content, identify the competitive landscape, and return a strictly typed JSON object.
 
 Website Domain: ${domain}
 Outreach Objective: ${objective}
@@ -78,10 +78,34 @@ Return ONLY a valid JSON object (no markdown, no code fences) with exactly these
   "valuePropositions": ["array of 3-4 key value propositions"],
   "techTags": ["array of 4-7 technology tags inferred from the site"],
   "top3PainPoints": ["array of exactly 3 specific operational gaps or pitch angles based on market positioning"],
-  "keyFeatures": ["array of 4-6 key products or features"]
+  "keyFeatures": ["array of 4-6 key products or features"],
+  "competitors": [
+    {
+      "name": "Competitor Name (provide 2 to 3 real direct market competitors or alternatives)",
+      "domain": "competitor.com",
+      "category": "Primary Enterprise Alternative | High-Growth Challenger | Legacy Incumbent | Budget Alternative",
+      "marketPosition": "one sentence explaining their positioning in the market",
+      "whereTargetWins": ["2-3 concise bullets where this company beats this competitor"],
+      "whereCompetitorWins": ["1-2 concise bullets where competitor holds an advantage or lower cost"],
+      "pricingModel": "brief summary of their pricing structure",
+      "objectionScript": {
+        "objection": "Common prospect objection like: We already use [Competitor] for this.",
+        "response": "A punchy 2-3 sentence counter-script that shifts focus to superior ROI or coexistence without rip-and-replace",
+        "killPoint": "One killer line summary that reframes the conversation"
+      }
+    }
+  ],
+  "battlecardSummary": {
+    "whySwitchSummary": "One crisp paragraph on the ultimate switching catalyst vs market alternatives",
+    "differentiatorPillars": [
+      { "title": "Pillar 1 Title", "description": "Concise differentiator explanation" },
+      { "title": "Pillar 2 Title", "description": "Concise differentiator explanation" },
+      { "title": "Pillar 3 Title", "description": "Concise differentiator explanation" }
+    ]
+  }
 }`;
 
-    const analysisText = await callGemini(apiKey, analysisPrompt, 0.3, 2048);
+    const analysisText = await callGemini(apiKey, analysisPrompt, 0.3, 3500);
     if (!analysisText) {
       return NextResponse.json(
         { error: "Gemini API analysis failed", fallback: true },

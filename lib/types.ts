@@ -1,5 +1,28 @@
 // Types for the Lead Scout application
 
+export interface CompetitorItem {
+  name: string;
+  domain: string;
+  category: string;
+  marketPosition: string;
+  whereTargetWins: string[];
+  whereCompetitorWins: string[];
+  pricingModel: string;
+  objectionScript: {
+    objection: string;
+    response: string;
+    killPoint: string;
+  };
+}
+
+export interface BattlecardSummary {
+  whySwitchSummary: string;
+  differentiatorPillars: {
+    title: string;
+    description: string;
+  }[];
+}
+
 export interface CompanyDossier {
   companyName: string;
   domain: string;
@@ -13,6 +36,8 @@ export interface CompanyDossier {
   techTags: string[];
   top3PainPoints: string[];
   keyFeatures: string[];
+  competitors?: CompetitorItem[];
+  battlecardSummary?: BattlecardSummary;
 }
 
 export interface OutreachEmail {
@@ -89,6 +114,88 @@ export const MOCK_DOSSIER: CompanyDossier = {
     "Stripe Atlas",
     "Stripe Treasury",
   ],
+  competitors: [
+    {
+      name: "Adyen",
+      domain: "adyen.com",
+      category: "Primary Enterprise Alternative",
+      marketPosition: "Unified global omnichannel payments platform favoured by massive enterprises (McDonald's, Spotify, Uber) for lower interchange fees and unified POS.",
+      whereTargetWins: [
+        "Superior developer experience and time-to-first-transaction (hours vs weeks)",
+        "Stripe Connect marketplace onboarding and multi-party payout automation",
+        "Self-serve transparency without minimum volume commitments",
+      ],
+      whereCompetitorWins: [
+        "Interchange++ pricing with lower take rates on massive global volume",
+        "Direct acquiring bank status in key jurisdictions with physical in-store terminal fleet",
+      ],
+      pricingModel: "Interchange++ pricing with tiered volume thresholds (custom quote)",
+      objectionScript: {
+        objection: "We already use Adyen because our finance team negotiated lower interchange rates for our volume.",
+        response: "Completely understand — Adyen is formidable for straightforward point-of-sale volume. Where companies partner with us is when their product team wants to launch usage-based subscriptions or marketplace splits, which take quarters of custom dev on Adyen. We can run alongside your core processing without disrupting negotiated processing rates.",
+        killPoint: "Keep negotiated interchange rates while unlocking rapid product velocity.",
+      },
+    },
+    {
+      name: "Checkout.com",
+      domain: "checkout.com",
+      category: "High-Growth Global Challenger",
+      marketPosition: "Cloud-native payments processor focusing on enterprise digital merchants with modular acquiring and granular acceptance telemetry.",
+      whereTargetWins: [
+        "Vastly larger financial suite (Billing, Tax, Invoicing, Corporate Cards, Atlas)",
+        "Stripe Radar ML models trained on hundreds of billions in global transaction history",
+        "Unrivalled third-party SaaS ecosystem & turnkey pre-built integrations",
+      ],
+      whereCompetitorWins: [
+        "Deep domestic processing in MENA and APAC regions",
+        "Dedicated account engineering and custom acceptance optimization consulting",
+      ],
+      pricingModel: "Custom volume-based pricing with modular capability licensing",
+      objectionScript: {
+        objection: "We're evaluating Checkout.com for their regional processing fees in international markets.",
+        response: "Checkout.com has strong regional routing in specific markets. However, companies adopting them find themselves having to rebuild their entire billing and tax infrastructure from scratch. Stripe eliminates that hidden engineering cost by packaging local payment methods, automated tax collection, and fraud prevention into a unified pipeline.",
+        killPoint: "Eliminates multi-vendor fragmentation and tax compliance overhead.",
+      },
+    },
+    {
+      name: "Paddle",
+      domain: "paddle.com",
+      category: "Merchant of Record (MoR) Alternative",
+      marketPosition: "Merchant of Record platform handling global tax compliance, liabilities, and billing for digital SaaS companies.",
+      whereTargetWins: [
+        "Full control over customer data, direct merchant accounts, and customized checkout branding",
+        "Significantly lower take rate (2.9% + 30¢ vs Paddle's 5% + 50¢)",
+        "Complete enterprise flexibility for bespoke contract billing and hybrid sales-assisted tiers",
+      ],
+      whereCompetitorWins: [
+        "Takes on legal liability for global VAT/sales tax filing automatically as Merchant of Record",
+        "Simpler compliance for early-stage digital product sellers without local tax entities",
+      ],
+      pricingModel: "Flat 5% + 50¢ per transaction (all-inclusive Merchant of Record)",
+      objectionScript: {
+        objection: "We use Paddle so we don't have to deal with global sales tax and VAT filing.",
+        response: "That convenience makes total sense at early stage. But as you pass $5M ARR, that 5% take rate becomes an immense margin penalty ($100k+ in unnecessary fees). With Stripe Tax and automated reporting, you retain full ownership of your customer relationships and recover over 2% directly to your bottom line.",
+        killPoint: "Recover 2%+ gross margin while retaining automated tax calculation.",
+      },
+    },
+  ],
+  battlecardSummary: {
+    whySwitchSummary: "While competitors compete on raw interchange basis points or take on reseller liability at a steep 5% cut, Stripe offers the only unified financial infrastructure that scales seamlessly from developer MVP to Fortune 500 multi-entity commerce without re-architecting your stack.",
+    differentiatorPillars: [
+      {
+        title: "Ecosystem Velocity",
+        description: "Launch new monetisation models (usage-based, seats, add-ons) in days rather than quarters of bespoke engineering.",
+      },
+      {
+        title: "Fraud Prevention at Scale",
+        description: "Stripe Radar ML is trained across millions of global businesses, lowering false positives and boosting card authorization rates.",
+      },
+      {
+        title: "Developer First, Enterprise Ready",
+        description: "Complete REST & GraphQL APIs with 99.999% uptime, webhooks idempotency, and comprehensive SDKs in every language.",
+      },
+    ],
+  },
 };
 
 export const MOCK_EMAILS: OutreachEmail[] = [
