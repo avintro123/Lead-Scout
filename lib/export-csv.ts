@@ -16,18 +16,19 @@ export function escapeCSV(value: string | number | undefined | null): string {
  */
 export function generateSingleCompanyCSV(
   dossier: CompanyDossier,
-  emails: OutreachEmail[],
+  emails: OutreachEmail[] | null = [],
   format: "apollo" | "lemlist" = "apollo"
 ): string {
+  const safeEmails = emails || [];
   const painPoints = dossier.top3PainPoints || [];
   const p1 = painPoints[0] || "";
   const p2 = painPoints[1] || "";
   const p3 = painPoints[2] || "";
 
-  const touch1 = emails[0] || { subject: "", body: "" };
-  const touch2 = emails[1] || { subject: "", body: "" };
-  const touch3 = emails[2] || { subject: "", body: "" };
-  const touch4 = emails[3] || { subject: "", body: "" };
+  const touch1 = safeEmails[0] || { subject: "", body: "" };
+  const touch2 = safeEmails[1] || { subject: "", body: "" };
+  const touch3 = safeEmails[2] || { subject: "", body: "" };
+  const touch4 = safeEmails[3] || { subject: "", body: "" };
 
   if (format === "lemlist") {
     const headers = [

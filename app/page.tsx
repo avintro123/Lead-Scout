@@ -6,6 +6,7 @@ import CompanyProfile from "@/components/CompanyProfile";
 import ActivityTimeline from "@/components/ActivityTimeline";
 import CompaniesView from "@/components/CompaniesView";
 import SettingsView from "@/components/SettingsView";
+import CommandPalette from "@/components/CommandPalette";
 import {
   OutreachObjective,
   ActivityItem,
@@ -53,6 +54,20 @@ export default function App() {
   const [companyCount, setCompanyCount] = useState(0);
   const [showObjectiveDropdown, setShowObjectiveDropdown] = useState(false);
   const [recentDossiers, setRecentDossiers] = useState<ScoutResult[]>([]);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  // Global hotkey listener for Cmd+K / Ctrl+K
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
 
   const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -264,6 +279,7 @@ export default function App() {
         companyCount={companyCount}
         onSelectCompany={handleLoadReport}
         currentDomain={dossier?.domain}
+        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
       />
 
       {/* Main Workspace Area */}
@@ -282,7 +298,20 @@ export default function App() {
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-[12px]">
+          <div className="flex items-center gap-3 text-[12px]">
+            {/* Quick Command Trigger */}
+            <button
+              type="button"
+              onClick={() => setCommandPaletteOpen(true)}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/80 bg-subtle/40 hover:bg-subtle text-fg-muted hover:text-fg text-[12px] transition-colors shadow-2xs group"
+            >
+              <Search className="w-3.5 h-3.5 text-fg-muted group-hover:text-fg" />
+              <span>Search or jump to...</span>
+              <kbd className="ml-1.5 px-1.5 py-0.2 text-[10px] font-mono rounded bg-surface border border-border/80 text-fg-muted shadow-2xs">
+                ⌘K
+              </kbd>
+            </button>
+
             {dossier && activeView === "research" && (
               <button
                 onClick={handleNewResearch}
@@ -546,6 +575,22 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Global Command Palette (⌘K / Ctrl+K) */}
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onNavigate={(view) => setActiveView(view)}
+        onSelectCompany={handleLoadReport}
+        onScoutDomain={(domain) => {
+          setQuery(domain);
+          handleLaunch(undefined, domain);
+        }}
+        onSetObjective={(obj) => setObjective(obj)}
+        currentObjective={objective}
+        currentDossier={dossier}
+        currentEmails={emails}
+      />
     </div>
   );
 }

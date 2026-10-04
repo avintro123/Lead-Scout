@@ -21,6 +21,7 @@ interface SidebarProps {
   companyCount: number;
   onSelectCompany?: (result: ScoutResult) => void;
   currentDomain?: string;
+  onOpenCommandPalette?: () => void;
 }
 
 export default function Sidebar({
@@ -29,6 +30,7 @@ export default function Sidebar({
   companyCount,
   onSelectCompany,
   currentDomain,
+  onOpenCommandPalette,
 }: SidebarProps) {
   const [recentLeads, setRecentLeads] = useState<LeadRecord[]>([]);
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -38,9 +40,12 @@ export default function Sidebar({
     setSettings(getUserSettings());
   }, [companyCount]);
 
-  // Global hotkeys (when not in input/textarea)
+  // Global hotkeys (when not in input/textarea and no modifier keys pressed)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) {
+        return;
+      }
       const target = e.target as HTMLElement | null;
       if (
         target &&
@@ -111,7 +116,23 @@ export default function Sidebar({
       </div>
 
       {/* Main Navigation */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-5">
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+        {onOpenCommandPalette && (
+          <button
+            type="button"
+            onClick={onOpenCommandPalette}
+            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md border border-border/80 bg-subtle/40 hover:bg-subtle text-fg-muted hover:text-fg text-[12px] transition-colors shadow-2xs group"
+          >
+            <div className="flex items-center gap-2">
+              <Search className="w-3.5 h-3.5 text-fg-muted group-hover:text-fg" />
+              <span>Search or jump...</span>
+            </div>
+            <kbd className="px-1.5 py-0.2 rounded bg-surface border border-border/80 text-[10px] font-mono text-fg-muted shadow-2xs">
+              ⌘K
+            </kbd>
+          </button>
+        )}
+
         <div>
           <div className="px-2 pb-1.5 text-[11px] font-semibold text-fg-muted uppercase tracking-wider">
             Workspace
@@ -245,3 +266,4 @@ export default function Sidebar({
     </aside>
   );
 }
+
