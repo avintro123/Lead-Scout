@@ -45,11 +45,17 @@ interface CommandPaletteProps {
   currentObjective?: OutreachObjective;
   currentDossier?: CompanyDossier | null;
   currentEmails?: OutreachEmail[] | null;
+  onOpenBatchScout?: () => void;
 }
 
 interface CommandItem {
   id: string;
-  category: "Scout Action" | "Companies" | "Navigation" | "Outreach Objective" | "Quick Exports";
+  category:
+    | "Scout Action"
+    | "Companies"
+    | "Navigation"
+    | "Outreach Objective"
+    | "Quick Exports";
   title: string;
   subtitle?: string;
   badge?: string;
@@ -67,6 +73,7 @@ export default function CommandPalette({
   currentObjective = "client_acquisition",
   currentDossier,
   currentEmails,
+  onOpenBatchScout,
 }: CommandPaletteProps) {
   const [search, setSearch] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -92,7 +99,8 @@ export default function CommandPalette({
     Object.values(PRESET_COMPANIES).forEach((preset) => {
       map.set(preset.domain, {
         dossier: preset.dossier,
-        emails: preset.emails[currentObjective] || preset.emails.client_acquisition,
+        emails:
+          preset.emails[currentObjective] || preset.emails.client_acquisition,
         timestamp: new Date().toISOString(),
       });
     });
@@ -108,7 +116,10 @@ export default function CommandPalette({
   }, [isOpen, currentObjective]);
 
   // Handle markdown dossier download
-  const handleExportMarkdown = (d: CompanyDossier, emails?: OutreachEmail[] | null) => {
+  const handleExportMarkdown = (
+    d: CompanyDossier,
+    emails?: OutreachEmail[] | null,
+  ) => {
     let md = `# Executive Dossier: ${d.companyName}\n\n`;
     md += `**Domain:** ${d.domain}\n`;
     md += `**Industry:** ${d.industryTags.join(", ")}\n`;
@@ -149,12 +160,16 @@ export default function CommandPalette({
       .replace(/\/.*$/, "")
       .trim();
 
-    if (cleanDomainCandidate.length >= 3 && cleanDomainCandidate.includes(".")) {
+    if (
+      cleanDomainCandidate.length >= 3 &&
+      cleanDomainCandidate.includes(".")
+    ) {
       list.push({
         id: `scout-${cleanDomainCandidate}`,
         category: "Scout Action",
         title: `Scout & analyze: "${cleanDomainCandidate}"`,
-        subtitle: "Launch live website extraction & Gemini intelligence synthesis",
+        subtitle:
+          "Launch live website extraction & Gemini intelligence synthesis",
         badge: "Press ↵",
         icon: Sparkles,
         perform: () => {
@@ -170,8 +185,12 @@ export default function CommandPalette({
         if (!q) return true;
         const nameMatch = c.dossier.companyName.toLowerCase().includes(q);
         const domainMatch = c.dossier.domain.toLowerCase().includes(q);
-        const industryMatch = c.dossier.industryTags?.some((t) => t.toLowerCase().includes(q));
-        const summaryMatch = c.dossier.oneSentenceSummary?.toLowerCase().includes(q);
+        const industryMatch = c.dossier.industryTags?.some((t) =>
+          t.toLowerCase().includes(q),
+        );
+        const summaryMatch = c.dossier.oneSentenceSummary
+          ?.toLowerCase()
+          .includes(q);
         return nameMatch || domainMatch || industryMatch || summaryMatch;
       })
       .slice(0, 5)
@@ -191,7 +210,12 @@ export default function CommandPalette({
       });
 
     // 3. Quick Actions & Navigation
-    const navActions: { id: View; title: string; subtitle: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    const navActions: {
+      id: View;
+      title: string;
+      subtitle: string;
+      icon: React.ComponentType<{ className?: string }>;
+    }[] = [
       {
         id: "research",
         title: "Go to Research Workspace",
@@ -213,7 +237,12 @@ export default function CommandPalette({
     ];
 
     navActions
-      .filter((a) => !q || a.title.toLowerCase().includes(q) || a.subtitle.toLowerCase().includes(q))
+      .filter(
+        (a) =>
+          !q ||
+          a.title.toLowerCase().includes(q) ||
+          a.subtitle.toLowerCase().includes(q),
+      )
       .forEach((a) => {
         list.push({
           id: `nav-${a.id}`,
@@ -230,7 +259,12 @@ export default function CommandPalette({
 
     // 4. Outreach Objective Switching
     if (onSetObjective) {
-      const objectivesList: { key: OutreachObjective; title: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
+      const objectivesList: {
+        key: OutreachObjective;
+        title: string;
+        desc: string;
+        icon: React.ComponentType<{ className?: string }>;
+      }[] = [
         {
           key: "client_acquisition",
           title: "Set Objective: Client Acquisition",
@@ -252,7 +286,12 @@ export default function CommandPalette({
       ];
 
       objectivesList
-        .filter((o) => !q || o.title.toLowerCase().includes(q) || o.desc.toLowerCase().includes(q))
+        .filter(
+          (o) =>
+            !q ||
+            o.title.toLowerCase().includes(q) ||
+            o.desc.toLowerCase().includes(q),
+        )
         .forEach((o) => {
           list.push({
             id: `obj-${o.key}`,
@@ -271,17 +310,28 @@ export default function CommandPalette({
 
     // 5. Active Company Exports & Actions (if active company loaded)
     if (currentDossier) {
-      const exportActions: { id: string; title: string; subtitle: string; icon: React.ComponentType<{ className?: string }>; perform: () => void }[] = [
+      const exportActions: {
+        id: string;
+        title: string;
+        subtitle: string;
+        icon: React.ComponentType<{ className?: string }>;
+        perform: () => void;
+      }[] = [
         {
           id: "export-apollo",
           title: `Export Apollo / Instantly CSV for ${currentDossier.companyName}`,
-          subtitle: "Generate RFC 4180 CSV with multi-touch email sequence columns",
+          subtitle:
+            "Generate RFC 4180 CSV with multi-touch email sequence columns",
           icon: Table,
           perform: () => {
-            const csv = generateSingleCompanyCSV(currentDossier, currentEmails || null, "apollo");
+            const csv = generateSingleCompanyCSV(
+              currentDossier,
+              currentEmails || null,
+              "apollo",
+            );
             triggerCSVDownload(
               csv,
-              `${currentDossier.companyName.toLowerCase().replace(/\s+/g, "-")}-apollo-campaign.csv`
+              `${currentDossier.companyName.toLowerCase().replace(/\s+/g, "-")}-apollo-campaign.csv`,
             );
             onClose();
           },
@@ -289,13 +339,18 @@ export default function CommandPalette({
         {
           id: "export-lemlist",
           title: `Export Lemlist CSV for ${currentDossier.companyName}`,
-          subtitle: "Optimized format with touch steps for Lemlist campaign importer",
+          subtitle:
+            "Optimized format with touch steps for Lemlist campaign importer",
           icon: Table,
           perform: () => {
-            const csv = generateSingleCompanyCSV(currentDossier, currentEmails || null, "lemlist");
+            const csv = generateSingleCompanyCSV(
+              currentDossier,
+              currentEmails || null,
+              "lemlist",
+            );
             triggerCSVDownload(
               csv,
-              `${currentDossier.companyName.toLowerCase().replace(/\s+/g, "-")}-lemlist-campaign.csv`
+              `${currentDossier.companyName.toLowerCase().replace(/\s+/g, "-")}-lemlist-campaign.csv`,
             );
             onClose();
           },
@@ -303,7 +358,8 @@ export default function CommandPalette({
         {
           id: "export-markdown",
           title: `Export Executive Dossier (.md) for ${currentDossier.companyName}`,
-          subtitle: "Download comprehensive sales brief and full intelligence report",
+          subtitle:
+            "Download comprehensive sales brief and full intelligence report",
           icon: FileText,
           perform: () => {
             handleExportMarkdown(currentDossier, currentEmails);
@@ -372,7 +428,9 @@ export default function CommandPalette({
         setSelectedIndex((prev) => (prev + 1) % Math.max(1, items.length));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + items.length) % Math.max(1, items.length));
+        setSelectedIndex(
+          (prev) => (prev - 1 + items.length) % Math.max(1, items.length),
+        );
       } else if (e.key === "Enter") {
         e.preventDefault();
         if (items[selectedIndex]) {
@@ -388,7 +446,9 @@ export default function CommandPalette({
   // Scroll active item into view
   useEffect(() => {
     if (listRef.current) {
-      const activeEl = listRef.current.querySelector(`[data-index="${selectedIndex}"]`);
+      const activeEl = listRef.current.querySelector(
+        `[data-index="${selectedIndex}"]`,
+      );
       if (activeEl) {
         activeEl.scrollIntoView({ block: "nearest" });
       }
@@ -440,7 +500,9 @@ export default function CommandPalette({
               <Search className="w-6 h-6 mx-auto text-fg-faint" />
               <p>No results found for &ldquo;{search}&rdquo;</p>
               <p className="text-[11px] text-fg-secondary">
-                Type a valid domain like <code className="font-mono text-fg">slack.com</code> to trigger live research.
+                Type a valid domain like{" "}
+                <code className="font-mono text-fg">slack.com</code> to trigger
+                live research.
               </p>
             </div>
           ) : (
@@ -520,16 +582,24 @@ export default function CommandPalette({
         <div className="px-4 py-2 border-t border-border bg-subtle/40 flex items-center justify-between text-[11px] text-fg-muted">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.2 rounded bg-surface border border-border/80 font-mono text-[9px]">↑</kbd>
-              <kbd className="px-1 py-0.2 rounded bg-surface border border-border/80 font-mono text-[9px]">↓</kbd>
+              <kbd className="px-1 py-0.2 rounded bg-surface border border-border/80 font-mono text-[9px]">
+                ↑
+              </kbd>
+              <kbd className="px-1 py-0.2 rounded bg-surface border border-border/80 font-mono text-[9px]">
+                ↓
+              </kbd>
               <span>navigate</span>
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.2 rounded bg-surface border border-border/80 font-mono text-[9px]">↵</kbd>
+              <kbd className="px-1.5 py-0.2 rounded bg-surface border border-border/80 font-mono text-[9px]">
+                ↵
+              </kbd>
               <span>select</span>
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.2 rounded bg-surface border border-border/80 font-mono text-[9px]">esc</kbd>
+              <kbd className="px-1 py-0.2 rounded bg-surface border border-border/80 font-mono text-[9px]">
+                esc
+              </kbd>
               <span>close</span>
             </span>
           </div>

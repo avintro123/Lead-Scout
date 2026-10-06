@@ -7,6 +7,7 @@ import ActivityTimeline from "@/components/ActivityTimeline";
 import CompaniesView from "@/components/CompaniesView";
 import SettingsView from "@/components/SettingsView";
 import CommandPalette from "@/components/CommandPalette";
+import BatchScoutModal from "@/components/BatchScoutModal";
 import {
   OutreachObjective,
   ActivityItem,
@@ -23,6 +24,7 @@ import {
   Globe,
   Sparkles,
   Plus,
+  Layers,
 } from "lucide-react";
 import { getFallbackDossier } from "@/lib/mock-data";
 import {
@@ -55,6 +57,7 @@ export default function App() {
   const [showObjectiveDropdown, setShowObjectiveDropdown] = useState(false);
   const [recentDossiers, setRecentDossiers] = useState<ScoutResult[]>([]);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
 
   // Global hotkey listener for Cmd+K / Ctrl+K
   useEffect(() => {
@@ -417,6 +420,17 @@ export default function App() {
                       </>
                     )}
                   </button>
+
+                  {/* Batch Mode Trigger Button */}
+                  <button
+                    type="button"
+                    onClick={() => setBatchModalOpen(true)}
+                    className="px-3.5 py-2.5 text-[13px] font-medium border border-border bg-surface hover:bg-subtle text-fg rounded-lg transition-colors shadow-2xs inline-flex items-center gap-1.5 shrink-0"
+                    title="Crawl and analyze multiple domains simultaneously"
+                  >
+                    <Layers className="w-4 h-4 text-accent" />
+                    <span>Batch Mode</span>
+                  </button>
                 </form>
 
                 {/* Quick Presets / Suggestion Chips */}
@@ -436,6 +450,15 @@ export default function App() {
                         </span>
                       </button>
                     ))}
+                    <span className="text-fg-faint">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setBatchModalOpen(true)}
+                      className="px-2.5 py-1 rounded-md border border-accent/40 bg-accent/5 hover:bg-accent/10 text-accent text-[12px] font-medium transition-colors inline-flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>Batch Prospecting (Multi-Domain)</span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -564,6 +587,7 @@ export default function App() {
               refreshTrigger={refreshTrigger}
               onCountUpdate={setCompanyCount}
               onNewResearch={handleNewResearch}
+              onOpenBatchModal={() => setBatchModalOpen(true)}
             />
           )}
 
@@ -590,6 +614,16 @@ export default function App() {
         currentObjective={objective}
         currentDossier={dossier}
         currentEmails={emails}
+        onOpenBatchScout={() => setBatchModalOpen(true)}
+      />
+
+      {/* Batch Multi-Domain Prospecting Modal */}
+      <BatchScoutModal
+        isOpen={batchModalOpen}
+        onClose={() => setBatchModalOpen(false)}
+        onInspectLead={(lead) => handleLoadReport(lead.dossier_json)}
+        onNavigateToCRM={() => setActiveView("companies")}
+        initialObjective={objective}
       />
     </div>
   );

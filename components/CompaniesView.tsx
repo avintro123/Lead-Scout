@@ -15,6 +15,7 @@ import {
   ArrowUpRight,
   Table,
   FileSpreadsheet,
+  Layers,
 } from "lucide-react";
 import { LeadRecord, ScoutResult } from "@/lib/types";
 import { getLocalLeads, deleteLocalLead } from "@/lib/storage";
@@ -29,6 +30,7 @@ interface CompaniesViewProps {
   refreshTrigger: number;
   onCountUpdate: (count: number) => void;
   onNewResearch?: () => void;
+  onOpenBatchModal?: () => void;
 }
 
 export default function CompaniesView({
@@ -36,6 +38,7 @@ export default function CompaniesView({
   refreshTrigger,
   onCountUpdate,
   onNewResearch,
+  onOpenBatchModal,
 }: CompaniesViewProps) {
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -228,6 +231,16 @@ export default function CompaniesView({
                 <span>JSON</span>
               </button>
             </>
+          )}
+
+          {onOpenBatchModal && (
+            <button
+              onClick={onOpenBatchModal}
+              className="px-3 py-1.5 text-[12px] font-medium border border-border rounded-md bg-surface hover:bg-subtle text-fg transition-colors inline-flex items-center gap-1.5 shadow-2xs"
+            >
+              <Layers className="w-3.5 h-3.5 text-accent" />
+              <span>Batch Ingest</span>
+            </button>
           )}
 
           {onNewResearch && (
