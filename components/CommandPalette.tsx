@@ -20,6 +20,7 @@ import {
   Plus,
   CornerDownLeft,
   X,
+  Printer,
 } from "lucide-react";
 import {
   CompanyDossier,
@@ -317,6 +318,16 @@ export default function CommandPalette({
         icon: React.ComponentType<{ className?: string }>;
         perform: () => void;
       }[] = [
+        {
+          id: "print-brief",
+          title: `Print Executive 1-Pager Brief for ${currentDossier.companyName}`,
+          subtitle: "Preview discovery brief or print/save as clean PDF",
+          icon: Printer,
+          perform: () => {
+            window.print();
+            onClose();
+          },
+        },
         {
           id: "export-apollo",
           title: `Export Apollo / Instantly CSV for ${currentDossier.companyName}`,

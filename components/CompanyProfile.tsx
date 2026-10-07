@@ -24,9 +24,11 @@ import {
   Zap,
   Target,
   MessageSquareQuote,
+  Printer,
 } from "lucide-react";
 import { CompanyDossier, OutreachEmail, ActivityItem, CompetitorItem, BattlecardSummary } from "@/lib/types";
 import ActivityTimeline from "./ActivityTimeline";
+import ExecutiveBriefModal from "./ExecutiveBriefModal";
 import { getUserSettings } from "@/lib/storage";
 import { getFallbackDossier } from "@/lib/mock-data";
 import {
@@ -95,6 +97,7 @@ export default function CompanyProfile({
   const [personalize, setPersonalize] = useState(true);
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [showVariations, setShowVariations] = useState(false);
+  const [showBriefModal, setShowBriefModal] = useState(false);
 
   const [selectedCompetitorIdx, setSelectedCompetitorIdx] = useState(0);
 
@@ -357,6 +360,16 @@ export default function CompanyProfile({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowBriefModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium border border-border bg-surface hover:bg-subtle text-fg rounded-md transition-colors shadow-2xs"
+              title="Preview & Print 1-Page Executive Discovery Brief"
+            >
+              <Printer className="w-3.5 h-3.5 text-accent" />
+              <span>Executive Brief (PDF)</span>
+            </button>
+
             <a
               href={`https://${dossier.domain}`}
               target="_blank"
@@ -382,6 +395,20 @@ export default function CompanyProfile({
               {exportDropdownOpen && (
                 <div className="absolute right-0 top-full mt-1.5 w-60 bg-surface border border-border rounded-lg shadow-md z-50 p-1 divide-y divide-border/60">
                   <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setShowBriefModal(true);
+                        setExportDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-[12px] rounded-md hover:bg-subtle text-fg flex items-center gap-2 transition-colors"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-accent" />
+                      <div>
+                        <span className="font-medium block">Executive 1-Pager (PDF)</span>
+                        <span className="text-[10px] text-fg-muted block">Print-ready discovery briefing</span>
+                      </div>
+                    </button>
+
                     <button
                       onClick={() => handleExportCSV("apollo")}
                       className="w-full text-left px-3 py-2 text-[12px] rounded-md hover:bg-subtle text-fg flex items-center gap-2 transition-colors"
@@ -1261,6 +1288,14 @@ export default function CompanyProfile({
           </div>
         </div>
       )}
+
+      {/* Executive Discovery 1-Pager Modal */}
+      <ExecutiveBriefModal
+        isOpen={showBriefModal}
+        onClose={() => setShowBriefModal(false)}
+        dossier={dossier}
+        emails={currentEmails}
+      />
     </div>
   );
 }
