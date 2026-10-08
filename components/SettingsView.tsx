@@ -13,6 +13,8 @@ import {
   Download,
   Loader2,
   ExternalLink,
+  Target,
+  Sliders,
 } from "lucide-react";
 import {
   getUserSettings,
@@ -329,7 +331,160 @@ export default function SettingsView({ onRefreshHistory }: SettingsViewProps) {
           </form>
         </section>
 
-        {/* Section 3: Workspace Data */}
+        {/* Section 3: Ideal Customer Profile (ICP) Criteria */}
+        <section className="bg-surface border border-border rounded-lg p-6 shadow-xs">
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+            <Target className="w-4 h-4 text-accent" />
+            <h2 className="text-[14px] font-semibold text-fg">Ideal Customer Profile (ICP) Qualification</h2>
+          </div>
+
+          <form onSubmit={handleSaveSettings} className="space-y-4">
+            {/* Target Headcount Sweet Spot */}
+            <div>
+              <label className="block text-[12px] font-medium text-fg mb-1.5">
+                Target Headcount Sweet Spot
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {["50 - 250", "250 - 1,000", "1,000 - 5,000", "5,000+"].map((hc) => {
+                  const active = settings.icpProfile?.targetHeadcounts?.includes(hc);
+                  return (
+                    <button
+                      key={hc}
+                      type="button"
+                      onClick={() => {
+                        const current = settings.icpProfile?.targetHeadcounts || [];
+                        const updated = active
+                          ? current.filter((x) => x !== hc)
+                          : [...current, hc];
+                        setSettings({
+                          ...settings,
+                          icpProfile: {
+                            ...settings.icpProfile!,
+                            targetHeadcounts: updated,
+                          },
+                        });
+                      }}
+                      className={`px-3 py-1.5 rounded-md text-[12px] font-medium border transition-colors ${
+                        active
+                          ? "bg-fg text-surface border-fg shadow-xs"
+                          : "bg-subtle/50 text-fg-secondary border-border hover:text-fg"
+                      }`}
+                    >
+                      {hc} FTEs
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-fg-muted mt-1.5">
+                Accounts matching these headcount bands will receive full firmographic points in ICP qualification.
+              </p>
+            </div>
+
+            {/* Target Business Models */}
+            <div>
+              <label className="block text-[12px] font-medium text-fg mb-1">
+                Target Business Models (Comma Separated)
+              </label>
+              <input
+                type="text"
+                value={settings.icpProfile?.targetBusinessModels?.join(", ") || ""}
+                onChange={(e) => {
+                  const models = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
+                  setSettings({
+                    ...settings,
+                    icpProfile: {
+                      ...settings.icpProfile!,
+                      targetBusinessModels: models,
+                    },
+                  });
+                }}
+                placeholder="B2B SaaS, Enterprise Software, Fintech, Developer Tools"
+                className="w-full px-3 py-2 text-[13px] bg-subtle/40 border border-border rounded-md text-fg focus:outline-none focus:border-fg/40 focus:ring-1 focus:ring-fg/20 transition-colors"
+              />
+              <p className="text-[11px] text-fg-muted mt-1">
+                Used to evaluate business model and recurring monetization alignment.
+              </p>
+            </div>
+
+            {/* Target Tech Keywords */}
+            <div>
+              <label className="block text-[12px] font-medium text-fg mb-1">
+                Preferred Tech Stack Keywords (Comma Separated)
+              </label>
+              <input
+                type="text"
+                value={settings.icpProfile?.targetKeywords?.join(", ") || ""}
+                onChange={(e) => {
+                  const kws = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
+                  setSettings({
+                    ...settings,
+                    icpProfile: {
+                      ...settings.icpProfile!,
+                      targetKeywords: kws,
+                    },
+                  });
+                }}
+                placeholder="API, Enterprise, Cloud, Platform, SaaS, Automation, Security, Billing"
+                className="w-full px-3 py-2 text-[13px] bg-subtle/40 border border-border rounded-md text-fg focus:outline-none focus:border-fg/40 focus:ring-1 focus:ring-fg/20 transition-colors"
+              />
+              <p className="text-[11px] text-fg-muted mt-1">
+                Matched against scraped telemetry and detected backend technologies.
+              </p>
+            </div>
+
+            {/* Min Qualification Threshold */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[12px] font-medium text-fg">
+                  Minimum Qualification Threshold
+                </label>
+                <span className="text-[12px] font-mono font-bold text-fg">
+                  {settings.icpProfile?.minQualificationScore || 70} / 100 pts
+                </span>
+              </div>
+              <input
+                type="range"
+                min="50"
+                max="90"
+                step="5"
+                value={settings.icpProfile?.minQualificationScore || 70}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    icpProfile: {
+                      ...settings.icpProfile!,
+                      minQualificationScore: parseInt(e.target.value, 10),
+                    },
+                  })
+                }
+                className="w-full accent-fg cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-fg-muted font-mono mt-1">
+                <span>50 (Permissive)</span>
+                <span>70 (Balanced Standard)</span>
+                <span>90 (Strict Enterprise)</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between">
+              <button
+                type="submit"
+                className="px-4 py-2 text-[13px] font-medium bg-fg text-surface rounded-md hover:bg-fg/90 transition-colors shadow-xs"
+              >
+                Save ICP Criteria
+              </button>
+
+              {savedFeedback && (
+                <span className="text-[12px] text-emerald-600 font-medium inline-flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" />
+                  Saved successfully
+                </span>
+              )}
+            </div>
+          </form>
+        </section>
+
+        {/* Section 4: Workspace Data */}
         <section className="bg-surface border border-border rounded-lg p-6 shadow-xs">
           <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
             <Database className="w-4 h-4 text-fg" />

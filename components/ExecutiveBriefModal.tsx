@@ -19,6 +19,8 @@ import {
   Building2,
 } from "lucide-react";
 import { CompanyDossier, OutreachEmail } from "@/lib/types";
+import { calculateIcpScore, getTierBadgeStyle } from "@/lib/icp-scorer";
+import { getUserSettings } from "@/lib/storage";
 
 interface ExecutiveBriefModalProps {
   isOpen: boolean;
@@ -46,6 +48,10 @@ export default function ExecutiveBriefModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  const primaryCompetitor = dossier.competitors?.[0];
+  const icpScore = calculateIcpScore(dossier, getUserSettings());
+  const tierStyle = getTierBadgeStyle(icpScore.tier);
+
   if (!isOpen) return null;
 
   const handlePrint = () => {
@@ -59,6 +65,8 @@ export default function ExecutiveBriefModal({
     text += `Domain: ${dossier.domain}\n`;
     text += `Headcount: ${dossier.estimatedHeadcount}\n`;
     text += `Business Model: ${dossier.estimatedBusinessModel}\n`;
+    text += `ICP Qualification: ${icpScore.tierLabel} (${icpScore.totalScore}/100)\n`;
+    text += `Action Recommendation: ${icpScore.recommendedAction}\n`;
     text += `Industries: ${dossier.industryTags?.join(", ")}\n\n`;
     text += `1. EXECUTIVE SUMMARY:\n${dossier.oneSentenceSummary}\n\n`;
     text += `2. IDEAL CUSTOMER PROFILE (ICP):\n${dossier.targetAudience}\n\n`;
@@ -88,8 +96,6 @@ export default function ExecutiveBriefModal({
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
-
-  const primaryCompetitor = dossier.competitors?.[0];
 
   return (
     <div
@@ -173,6 +179,9 @@ export default function ExecutiveBriefModal({
                 <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
                   Verified Intel
                 </span>
+                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded border ${tierStyle.bg} ${tierStyle.text} ${tierStyle.border}`}>
+                  {icpScore.tierLabel} ({icpScore.totalScore}/100)
+                </span>
               </div>
               <p className="text-[13px] text-fg-secondary italic">
                 &ldquo;{dossier.tagline || dossier.oneSentenceSummary}&rdquo;
@@ -187,8 +196,8 @@ export default function ExecutiveBriefModal({
             </div>
           </div>
 
-          {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-lg border border-border bg-subtle/30 text-[12px] print-avoid-break">
+          {/* Quick Metrics Bar (5 Metrics including ICP Fit) */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3.5 rounded-lg border border-border bg-subtle/30 text-[12px] print-avoid-break">
             <div>
               <span className="text-[10px] uppercase tracking-wider font-semibold text-fg-muted block">
                 Headcount
@@ -216,7 +225,16 @@ export default function ExecutiveBriefModal({
                 Detected Stack
               </span>
               <span className="font-semibold text-fg truncate block">
-                {dossier.techTags?.slice(0, 3).join(", ")} ({dossier.techTags?.length} tech)
+                {dossier.techTags?.slice(0, 2).join(", ")} ({dossier.techTags?.length} tech)
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-fg-muted block">
+                ICP Fit Score
+              </span>
+              <span className={`font-semibold inline-flex items-center gap-1 ${tierStyle.text}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${tierStyle.dot}`} />
+                {icpScore.totalScore}/100 ({icpScore.tier === "tier_1" ? "Tier 1" : icpScore.tier === "tier_2" ? "Tier 2" : "Tier 3"})
               </span>
             </div>
           </div>

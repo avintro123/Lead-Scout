@@ -575,6 +575,7 @@ export default function App() {
                   emails={emails}
                   activities={activities}
                   isResearching={isResearching}
+                  onOpenSettings={() => setActiveView("settings")}
                 />
               )}
             </div>

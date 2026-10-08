@@ -68,6 +68,39 @@ export type OutreachObjective =
   | "partnership_inquiry"
   | "tech_stack_audit";
 
+export type IcpTier = "tier_1" | "tier_2" | "tier_3";
+
+export interface IcpCriterionBreakdown {
+  id: "headcount" | "business_model" | "tech_stack" | "pain_points";
+  title: string;
+  category: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+  status: "excellent" | "good" | "fair" | "poor";
+  reason: string;
+  matchedSignals: string[];
+}
+
+export interface IcpScoreResult {
+  totalScore: number;
+  tier: IcpTier;
+  tierLabel: string;
+  verdict: string;
+  recommendedAction: string;
+  priorityLevel: "Critical" | "High" | "Moderate" | "Low";
+  breakdown: IcpCriterionBreakdown[];
+  evaluatedAt: string;
+}
+
+export interface IcpProfileSettings {
+  targetHeadcounts: string[];
+  targetBusinessModels: string[];
+  targetKeywords: string[];
+  minQualificationScore: number;
+}
+
+
 export interface ActivityItem {
   id: string;
   title: string;

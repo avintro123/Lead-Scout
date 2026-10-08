@@ -1,4 +1,4 @@
-import { LeadRecord, ScoutResult } from "./types";
+import { LeadRecord, ScoutResult, IcpProfileSettings } from "./types";
 
 const LEADS_STORAGE_KEY = "leadscout_local_leads";
 const SETTINGS_STORAGE_KEY = "leadscout_settings";
@@ -12,6 +12,7 @@ export interface UserSettings {
   valueProp: string;
   tone: "direct" | "consultative" | "casual";
   defaultObjective: string;
+  icpProfile?: IcpProfileSettings;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -22,7 +23,30 @@ export const DEFAULT_SETTINGS: UserSettings = {
   valueProp: "We help B2B SaaS teams cut enterprise sales friction and accelerate pipeline velocity.",
   tone: "direct",
   defaultObjective: "client_acquisition",
+  icpProfile: {
+    targetHeadcounts: ["250 - 1,000", "1,000 - 5,000", "5,000+"],
+    targetBusinessModels: [
+      "B2B SaaS",
+      "Enterprise Software",
+      "Fintech",
+      "Developer Tools",
+      "Infrastructure",
+    ],
+    targetKeywords: [
+      "API",
+      "Enterprise",
+      "Cloud",
+      "Platform",
+      "SaaS",
+      "Automation",
+      "Security",
+      "Billing",
+      "Payments",
+    ],
+    minQualificationScore: 70,
+  },
 };
+
 
 export function getLocalLeads(): LeadRecord[] {
   if (typeof window === "undefined") return [];
@@ -111,7 +135,15 @@ export function getUserSettings(): UserSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      icpProfile: {
+        ...DEFAULT_SETTINGS.icpProfile!,
+        ...(parsed.icpProfile || {}),
+      },
+    };
   } catch {
     return DEFAULT_SETTINGS;
   }

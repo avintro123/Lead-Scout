@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Globe,
   Users,
@@ -29,6 +29,8 @@ import {
 import { CompanyDossier, OutreachEmail, ActivityItem, CompetitorItem, BattlecardSummary } from "@/lib/types";
 import ActivityTimeline from "./ActivityTimeline";
 import ExecutiveBriefModal from "./ExecutiveBriefModal";
+import IcpScoringCard from "./IcpScoringCard";
+import { calculateIcpScore, getTierBadgeStyle } from "@/lib/icp-scorer";
 import { getUserSettings } from "@/lib/storage";
 import { getFallbackDossier } from "@/lib/mock-data";
 import {
@@ -45,6 +47,7 @@ interface CompanyProfileProps {
   emails: OutreachEmail[] | null;
   activities: ActivityItem[];
   isResearching: boolean;
+  onOpenSettings?: () => void;
 }
 
 function CopyBtn({
@@ -91,6 +94,7 @@ export default function CompanyProfile({
   emails,
   activities,
   isResearching,
+  onOpenSettings,
 }: CompanyProfileProps) {
   const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
   const [activeEmailIdx, setActiveEmailIdx] = useState(0);
@@ -111,6 +115,14 @@ export default function CompanyProfile({
   }, [emails]);
 
   const settings = getUserSettings();
+
+  // Deterministic ICP Qualification Score
+  const icpScore = useMemo(
+    () => calculateIcpScore(dossier, settings),
+    [dossier, settings]
+  );
+  const tierStyle = getTierBadgeStyle(icpScore.tier);
+
 
   // If research finishes while on activity tab, auto switch to overview
   useEffect(() => {
@@ -169,7 +181,9 @@ export default function CompanyProfile({
     md += `**Generated:** ${new Date().toLocaleString()}\n`;
     md += `**Industry:** ${dossier.industryTags.join(", ")}\n`;
     md += `**Headcount:** ${dossier.estimatedHeadcount}\n`;
-    md += `**Business Model:** ${dossier.estimatedBusinessModel}\n\n`;
+    md += `**Business Model:** ${dossier.estimatedBusinessModel}\n`;
+    md += `**ICP Qualification:** ${icpScore.tierLabel} (${icpScore.totalScore}/100)\n`;
+    md += `**Recommended SDR Motion:** ${icpScore.recommendedAction}\n\n`;
     md += `## One-Sentence Summary\n${dossier.oneSentenceSummary}\n\n`;
     md += `## Target Audience\n${dossier.targetAudience}\n\n`;
     md += `## Key Value Propositions\n`;
@@ -342,6 +356,20 @@ export default function CompanyProfile({
                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                   Analyzed
                 </span>
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold border ${tierStyle.bg} ${tierStyle.text} ${tierStyle.border}`}
+                  title={icpScore.verdict}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${tierStyle.dot}`} />
+                  <span>
+                    {icpScore.tier === "tier_1"
+                      ? "Tier 1 Priority"
+                      : icpScore.tier === "tier_2"
+                      ? "Tier 2 Qualified"
+                      : "Tier 3 Nurture"}
+                  </span>
+                  <span className="font-mono opacity-80">({icpScore.totalScore}/100)</span>
+                </span>
               </div>
 
               <div className="flex items-center gap-3 mt-1.5 text-[12px] text-fg-secondary flex-wrap">
@@ -491,7 +519,11 @@ export default function CompanyProfile({
 
       {/* TAB 1: EXECUTIVE DOSSIER */}
       {activeTab === "overview" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in">
+          {/* ICP Qualification Matrix Card */}
+          <IcpScoringCard scoreResult={icpScore} onOpenSettings={onOpenSettings} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main 2-column info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Executive Summary */}
@@ -616,7 +648,8 @@ export default function CompanyProfile({
             </div>
           </div>
         </div>
-      )}
+      </div>
+    )}
 
       {/* TAB 2: PAIN POINTS & OPPORTUNITIES */}
       {activeTab === "signals" && (

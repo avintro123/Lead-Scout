@@ -33,6 +33,7 @@ import {
 import { getLocalLeads } from "@/lib/storage";
 import { PRESET_COMPANIES, getFallbackDossier } from "@/lib/mock-data";
 import { generateSingleCompanyCSV, triggerCSVDownload } from "@/lib/export-csv";
+import { calculateIcpScore } from "@/lib/icp-scorer";
 
 export type View = "research" | "companies" | "settings";
 
@@ -192,16 +193,23 @@ export default function CommandPalette({
         const summaryMatch = c.dossier.oneSentenceSummary
           ?.toLowerCase()
           .includes(q);
-        return nameMatch || domainMatch || industryMatch || summaryMatch;
+        const icp = calculateIcpScore(c.dossier);
+        const icpMatch =
+          (q.includes("tier 1") && icp.tier === "tier_1") ||
+          (q.includes("tier 2") && icp.tier === "tier_2") ||
+          (q.includes("tier 3") && icp.tier === "tier_3") ||
+          (q.includes("icp") && icp.totalScore >= 70);
+        return nameMatch || domainMatch || industryMatch || summaryMatch || icpMatch;
       })
       .slice(0, 5)
       .forEach((c) => {
+        const icp = calculateIcpScore(c.dossier);
         list.push({
           id: `company-${c.dossier.domain}`,
           category: "Companies",
           title: c.dossier.companyName,
           subtitle: `${c.dossier.domain} · ${c.dossier.industryTags?.slice(0, 2).join(", ")}`,
-          badge: c.dossier.estimatedHeadcount || "Profile",
+          badge: `${icp.tier === "tier_1" ? "Tier 1" : "Tier 2"} (${icp.totalScore} pts)`,
           icon: Globe,
           perform: () => {
             onSelectCompany(c);

@@ -16,9 +16,11 @@ import {
   Table,
   FileSpreadsheet,
   Layers,
+  ShieldCheck,
 } from "lucide-react";
 import { LeadRecord, ScoutResult } from "@/lib/types";
-import { getLocalLeads, deleteLocalLead } from "@/lib/storage";
+import { getLocalLeads, deleteLocalLead, getUserSettings } from "@/lib/storage";
+import { calculateIcpScore, getTierBadgeStyle } from "@/lib/icp-scorer";
 import {
   generateBulkCompaniesCSV,
   generateSingleCompanyCSV,
@@ -43,8 +45,10 @@ export default function CompaniesView({
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedObjective, setSelectedObjective] = useState<string>("all");
+  const [selectedTier, setSelectedTier] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [isCloudConfigured, setIsCloudConfigured] = useState(false);
+  const settings = getUserSettings();
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -187,7 +191,15 @@ export default function CompaniesView({
     const matchesObjective =
       selectedObjective === "all" || l.objective === selectedObjective;
 
-    return matchesSearch && matchesObjective;
+    const matchesTier =
+      selectedTier === "all" ||
+      (() => {
+        if (!l.dossier_json?.dossier) return false;
+        const score = calculateIcpScore(l.dossier_json.dossier, settings);
+        return score.tier === selectedTier;
+      })();
+
+    return matchesSearch && matchesObjective && matchesTier;
   });
 
   return (
@@ -306,6 +318,20 @@ export default function CompaniesView({
             <option value="tech_stack_audit">Tech Stack Audit</option>
           </select>
         </div>
+
+        <div className="flex items-center gap-1.5 bg-surface border border-border rounded-md px-2.5 py-1.5 text-[12px]">
+          <ShieldCheck className="w-3.5 h-3.5 text-accent" />
+          <select
+            value={selectedTier}
+            onChange={(e) => setSelectedTier(e.target.value)}
+            className="bg-transparent text-fg text-[12px] font-medium focus:outline-none cursor-pointer"
+          >
+            <option value="all">All ICP Tiers</option>
+            <option value="tier_1">Tier 1 · Priority (80+)</option>
+            <option value="tier_2">Tier 2 · Qualified (60-79)</option>
+            <option value="tier_3">Tier 3 · Nurture (&lt;60)</option>
+          </select>
+        </div>
       </div>
 
       {/* Table Container */}
@@ -344,6 +370,7 @@ export default function CompaniesView({
                 <tr className="border-b border-border bg-subtle/30 text-[11px] font-semibold text-fg-muted uppercase tracking-wider">
                   <th className="py-2.5 px-4">Company</th>
                   <th className="py-2.5 px-4">Objective</th>
+                  <th className="py-2.5 px-4">ICP Fit</th>
                   <th className="py-2.5 px-4">Industry &amp; Size</th>
                   <th className="py-2.5 px-4">Signals</th>
                   <th className="py-2.5 px-4">Date</th>
@@ -382,6 +409,32 @@ export default function CompaniesView({
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-subtle text-fg-secondary border border-border capitalize">
                           {lead.objective?.replace(/_/g, " ") || "Acquisition"}
                         </span>
+                      </td>
+
+                      {/* ICP Fit Column */}
+                      <td className="py-3 px-4">
+                        {d ? (() => {
+                          const scoreResult = calculateIcpScore(d, settings);
+                          const tierStyle = getTierBadgeStyle(scoreResult.tier);
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold border ${tierStyle.bg} ${tierStyle.text} ${tierStyle.border}`}
+                              title={scoreResult.verdict}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${tierStyle.dot}`} />
+                              <span>
+                                {scoreResult.tier === "tier_1"
+                                  ? "Tier 1"
+                                  : scoreResult.tier === "tier_2"
+                                  ? "Tier 2"
+                                  : "Tier 3"}
+                              </span>
+                              <span className="font-mono opacity-80">({scoreResult.totalScore})</span>
+                            </span>
+                          );
+                        })() : (
+                          <span className="text-fg-muted text-[11px]">—</span>
+                        )}
                       </td>
 
                       {/* Industry & Size */}
