@@ -8,6 +8,7 @@ import CompaniesView from "@/components/CompaniesView";
 import SettingsView from "@/components/SettingsView";
 import CommandPalette from "@/components/CommandPalette";
 import BatchScoutModal from "@/components/BatchScoutModal";
+import AdminAuthModal from "@/components/AdminAuthModal";
 import {
   OutreachObjective,
   ActivityItem,
@@ -58,6 +59,20 @@ export default function App() {
   const [recentDossiers, setRecentDossiers] = useState<ScoutResult[]>([]);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminAuthOpen, setAdminAuthOpen] = useState(false);
+
+  // Validate active admin session on mount
+  useEffect(() => {
+    fetch("/api/auth")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.authenticated) {
+          setIsAdmin(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Global hotkey listener for Cmd+K / Ctrl+K
   useEffect(() => {
@@ -283,6 +298,8 @@ export default function App() {
         onSelectCompany={handleLoadReport}
         currentDomain={dossier?.domain}
         onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+        isAdmin={isAdmin}
+        onOpenAdminAuth={() => setAdminAuthOpen(true)}
       />
 
       {/* Main Workspace Area */}
@@ -589,6 +606,8 @@ export default function App() {
               onCountUpdate={setCompanyCount}
               onNewResearch={handleNewResearch}
               onOpenBatchModal={() => setBatchModalOpen(true)}
+              isAdmin={isAdmin}
+              onOpenAdminAuth={() => setAdminAuthOpen(true)}
             />
           )}
 
@@ -625,6 +644,14 @@ export default function App() {
         onInspectLead={(lead) => handleLoadReport(lead.dossier_json)}
         onNavigateToCRM={() => setActiveView("companies")}
         initialObjective={objective}
+      />
+
+      {/* Admin Authentication Modal */}
+      <AdminAuthModal
+        isOpen={adminAuthOpen}
+        onClose={() => setAdminAuthOpen(false)}
+        isAdmin={isAdmin}
+        onAuthChange={setIsAdmin}
       />
     </div>
   );

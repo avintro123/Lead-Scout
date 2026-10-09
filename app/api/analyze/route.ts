@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sanitizeDomain, sanitizeString } from "@/lib/security";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // Gemini API models in priority order
 const GEMINI_MODELS = [
@@ -8,7 +10,12 @@ const GEMINI_MODELS = [
   "gemini-3.8-flash",
 ];
 
-async function callGemini(apiKey: string, prompt: string, temperature = 0.3, maxTokens = 2048) {
+async function callGemini(
+  apiKey: string,
+  prompt: string,
+  temperature = 0.3,
+  maxTokens = 2048
+) {
   for (const model of GEMINI_MODELS) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -26,28 +33,56 @@ async function callGemini(apiKey: string, prompt: string, temperature = 0.3, max
       });
 
       if (!res.ok) {
-        const errText = await res.text();
-        console.warn(`Model ${model} failed:`, errText);
-        continue; // Try next model
+        continue; // Try next model fallback
       }
 
       const data = await res.json();
       const parts = data.candidates?.[0]?.content?.parts || [];
-      // Filter out any thinking/thought parts to get actual JSON output
-      const textPart = parts.find((p: { text?: string; thought?: boolean }) => p.text && !p.thought);
+      // Filter out thinking parts to parse actual JSON output
+      const textPart = parts.find(
+        (p: { text?: string; thought?: boolean }) => p.text && !p.thought
+      );
       const text = textPart?.text || parts[0]?.text || "";
       if (text) return text;
-    } catch (e) {
-      console.warn(`Call to ${model} threw error:`, e);
+    } catch {
+      // Continue to next model on network/timeout error
     }
   }
   return null;
 }
 
 export async function POST(req: NextRequest) {
+  // 1. Rate Limiting: 15 analysis requests / minute per IP
+  const rateLimit = checkRateLimit(req, {
+    limit: 15,
+    windowSeconds: 60,
+    endpointKey: "analyze-synthesis",
+  });
+
+  if (!rateLimit.success && rateLimit.response) {
+    return rateLimit.response;
+  }
+
   try {
-    const { content, domain, objective, customApiKey } = await req.json();
-    const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+    const body = await req.json();
+    const { content, domain, objective, customApiKey } = body || {};
+
+    // 2. Input Validation & Sanitization
+    const safeDomain = sanitizeDomain(domain);
+    const safeContent = sanitizeString(content, 12000);
+    const safeObjective = [
+      "client_acquisition",
+      "partnership_inquiry",
+      "tech_stack_audit",
+    ].includes(objective)
+      ? objective
+      : "client_acquisition";
+
+    const apiKey = (
+      typeof customApiKey === "string" && customApiKey.trim()
+        ? customApiKey.trim()
+        : process.env.GEMINI_API_KEY || ""
+    ).trim();
 
     if (!apiKey) {
       return NextResponse.json(
@@ -56,19 +91,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Basic API key format validation (prevents injection into URL parameters)
+    if (!/^[a-zA-Z0-9_.-]{20,120}$/.test(apiKey)) {
+      return NextResponse.json(
+        { error: "Invalid API key format", fallback: true },
+        { status: 400 }
+      );
+    }
+
+    if (!safeContent) {
+      return NextResponse.json(
+        { error: "Content is required for analysis", fallback: true },
+        { status: 400 }
+      );
+    }
+
     // Phase 1: Analyze the company & competitive landscape
     const analysisPrompt = `You are an expert B2B market analyst and competitive intelligence strategist. Analyze the following website content, identify the competitive landscape, and return a strictly typed JSON object.
 
-Website Domain: ${domain}
-Outreach Objective: ${objective}
+Website Domain: ${safeDomain}
+Outreach Objective: ${safeObjective}
 
 Website Content:
-${content}
+${safeContent}
 
 Return ONLY a valid JSON object (no markdown, no code fences) with exactly these fields:
 {
   "companyName": "string - the company name",
-  "domain": "${domain}",
+  "domain": "${safeDomain}",
   "oneSentenceSummary": "string - one sentence describing what the company does",
   "tagline": "string - the company's tagline or main value proposition headline",
   "targetAudience": "string - who the company serves",
@@ -130,11 +180,11 @@ Return ONLY a valid JSON object (no markdown, no code fences) with exactly these
 
     // Phase 2: Generate outreach emails
     const objectiveLabel =
-      objective === "client_acquisition"
+      safeObjective === "client_acquisition"
         ? "Client Acquisition Pitch"
-        : objective === "partnership_inquiry"
-          ? "Partnership Inquiry"
-          : "Tech Stack Audit";
+        : safeObjective === "partnership_inquiry"
+        ? "Partnership Inquiry"
+        : "Tech Stack Audit";
 
     const outreachPrompt = `You are an expert B2B outreach copywriter. Based on the following company intelligence, generate 4 hyper-personalized outreach messages using the Pain-Agitate-Solution framework.
 

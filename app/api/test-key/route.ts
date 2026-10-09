@@ -1,14 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  // 1. Rate Limiting: 6 key validation requests / minute
+  const rateLimit = checkRateLimit(req, {
+    limit: 6,
+    windowSeconds: 60,
+    endpointKey: "test-key",
+  });
+
+  if (!rateLimit.success && rateLimit.response) {
+    return rateLimit.response;
+  }
+
   try {
-    const { apiKey } = await req.json();
-    const keyToTest = apiKey || process.env.GEMINI_API_KEY;
+    const body = await req.json();
+    const rawKey = body?.apiKey;
+    const keyToTest = (
+      typeof rawKey === "string" && rawKey.trim()
+        ? rawKey.trim()
+        : process.env.GEMINI_API_KEY || ""
+    ).trim();
 
     if (!keyToTest) {
       return NextResponse.json(
         { valid: false, error: "No API key provided" },
-        { status: 400 },
+        { status: 400 }
+      );
+    }
+
+    // Validate key structure before dispatching
+    if (!/^[a-zA-Z0-9_.-]{20,120}$/.test(keyToTest)) {
+      return NextResponse.json(
+        { valid: false, error: "Invalid API key structure" },
+        { status: 400 }
       );
     }
 
@@ -27,15 +52,16 @@ export async function POST(req: NextRequest) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text: "ping" }] }],
-            generationConfig: { maxOutputTokens: 100 },
+            generationConfig: { maxOutputTokens: 10 },
           }),
-        },
+          signal: AbortSignal.timeout(10000),
+        }
       );
 
       if (res.ok) {
         return NextResponse.json({
           valid: true,
-          message: `Gemini API key is active and working (${model})`,
+          message: `Gemini API key is active and verified (${model})`,
         });
       }
 
@@ -45,10 +71,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       { valid: false, error: lastError },
-      { status: 200 },
+      { status: 200 }
     );
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Connection failed";
-    return NextResponse.json({ valid: false, error: msg }, { status: 500 });
+  } catch {
+    return NextResponse.json(
+      { valid: false, error: "Validation connection timed out" },
+      { status: 500 }
+    );
   }
 }

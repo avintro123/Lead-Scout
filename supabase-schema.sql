@@ -1,7 +1,7 @@
--- Lead Scout — Supabase Database Schema
--- Run this SQL in your Supabase SQL Editor to create the required table
+-- Lead Scout — Production Hardened Supabase Database Schema
+-- Run this SQL in your Supabase SQL Editor to secure your leads table
 
--- Create the leads table
+-- 1. Create the leads table
 CREATE TABLE IF NOT EXISTS leads (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   domain TEXT NOT NULL,
@@ -11,17 +11,36 @@ CREATE TABLE IF NOT EXISTS leads (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create index for faster searches
+-- 2. Indexes for fast querying & deduplication
 CREATE INDEX IF NOT EXISTS idx_leads_domain ON leads(domain);
 CREATE INDEX IF NOT EXISTS idx_leads_company_name ON leads(company_name);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at DESC);
 
--- Enable Row Level Security (optional, recommended for production)
+-- 3. Enable Row Level Security (RLS)
 ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
 
--- Create a policy that allows all operations (for development)
--- In production, restrict this to authenticated users
-CREATE POLICY "Allow all operations on leads" ON leads
+-- 4. Clean up any insecure legacy open policies
+DROP POLICY IF EXISTS "Allow all operations on leads" ON leads;
+DROP POLICY IF EXISTS "Allow public read" ON leads;
+DROP POLICY IF EXISTS "Allow service role full access" ON leads;
+
+-- 5. Hardened Security Policies:
+-- Policy A: Allow server-side API (service_role) full access to insert, update, select, and delete
+CREATE POLICY "Allow service role full access" ON leads
   FOR ALL
+  TO service_role
   USING (true)
   WITH CHECK (true);
+
+-- Policy B: Allow authenticated users to view leads
+CREATE POLICY "Allow authenticated users to read leads" ON leads
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
+-- Policy C: Allow anon users to read leads only if explicitly authorized (optional, disabled by default)
+-- To enable read-only access for anon client keys, uncomment below:
+-- CREATE POLICY "Allow anon read-only access" ON leads
+--   FOR SELECT
+--   TO anon
+--   USING (true);

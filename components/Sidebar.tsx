@@ -9,6 +9,8 @@ import {
   ChevronRight,
   Database,
   ExternalLink,
+  ShieldCheck,
+  Lock,
 } from "lucide-react";
 import { getLocalLeads, getUserSettings, UserSettings } from "@/lib/storage";
 import { LeadRecord, ScoutResult } from "@/lib/types";
@@ -22,6 +24,8 @@ interface SidebarProps {
   onSelectCompany?: (result: ScoutResult) => void;
   currentDomain?: string;
   onOpenCommandPalette?: () => void;
+  isAdmin?: boolean;
+  onOpenAdminAuth?: () => void;
 }
 
 export default function Sidebar({
@@ -31,6 +35,8 @@ export default function Sidebar({
   onSelectCompany,
   currentDomain,
   onOpenCommandPalette,
+  isAdmin = false,
+  onOpenAdminAuth,
 }: SidebarProps) {
   const [recentLeads, setRecentLeads] = useState<LeadRecord[]>([]);
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -239,7 +245,37 @@ export default function Sidebar({
       </div>
 
       {/* User / Workspace Footer (with adequate pb to clear dev indicators) */}
-      <div className="p-3 border-t border-border pb-10">
+      <div className="p-3 border-t border-border pb-10 space-y-2">
+        {/* Security & Access State Badge */}
+        {onOpenAdminAuth && (
+          <button
+            type="button"
+            onClick={onOpenAdminAuth}
+            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-[11px] font-medium border transition-colors ${
+              isAdmin
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100/60"
+                : "bg-subtle/40 border-border text-fg-muted hover:text-fg hover:bg-subtle"
+            }`}
+            title={
+              isAdmin
+                ? "Admin Session Active (Click to manage)"
+                : "Protected Mode (Click to unlock Admin privileges)"
+            }
+          >
+            <div className="flex items-center gap-1.5">
+              {isAdmin ? (
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              ) : (
+                <Lock className="w-3.5 h-3.5 text-fg-muted" />
+              )}
+              <span>{isAdmin ? "Admin Active" : "Viewer Mode"}</span>
+            </div>
+            <span className="text-[10px] font-mono opacity-80">
+              {isAdmin ? "Unlocked" : "Locked"}
+            </span>
+          </button>
+        )}
+
         <div className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-subtle/60 transition-colors">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-6 h-6 rounded-full bg-fg text-surface flex items-center justify-center text-[10px] font-semibold shrink-0">

@@ -33,6 +33,8 @@ interface CompaniesViewProps {
   onCountUpdate: (count: number) => void;
   onNewResearch?: () => void;
   onOpenBatchModal?: () => void;
+  isAdmin?: boolean;
+  onOpenAdminAuth?: () => void;
 }
 
 export default function CompaniesView({
@@ -41,6 +43,8 @@ export default function CompaniesView({
   onCountUpdate,
   onNewResearch,
   onOpenBatchModal,
+  isAdmin = false,
+  onOpenAdminAuth,
 }: CompaniesViewProps) {
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -91,19 +95,36 @@ export default function CompaniesView({
   }, [refreshTrigger]);
 
   const handleDelete = async (id: string, domain: string) => {
-    // Delete from local storage
-    deleteLocalLead(id);
-
-    // Delete from Supabase if id is a uuid
+    // If it's a cloud lead in Supabase, require admin authorization
     if (!id.startsWith("local_")) {
+      if (!isAdmin) {
+        if (onOpenAdminAuth) {
+          onOpenAdminAuth();
+        }
+        return;
+      }
+
       try {
-        await fetch("/api/leads", {
+        const res = await fetch("/api/leads", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id }),
         });
-      } catch {}
+
+        if (!res.ok) {
+          if (res.status === 401 && onOpenAdminAuth) {
+            onOpenAdminAuth();
+          }
+          return;
+        }
+      } catch (err) {
+        console.error("Cloud lead deletion error:", err);
+        return;
+      }
     }
+
+    // Delete from local storage
+    deleteLocalLead(id);
 
     setLeads((prev) => {
       const updated = prev.filter((l) => l.id !== id && l.domain !== domain);
@@ -496,8 +517,16 @@ export default function CompaniesView({
 
                           <button
                             onClick={() => handleDelete(lead.id, lead.domain)}
-                            className="p-1.5 rounded text-fg-muted hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                            title="Delete Record"
+                            className={`p-1.5 rounded transition-colors ${
+                              !lead.id.startsWith("local_") && !isAdmin
+                                ? "text-fg-muted hover:text-amber-600 hover:bg-amber-500/10"
+                                : "text-fg-muted hover:text-rose-600 hover:bg-rose-50"
+                            }`}
+                            title={
+                              !lead.id.startsWith("local_") && !isAdmin
+                                ? "Admin authentication required to delete cloud record"
+                                : "Delete Record"
+                            }
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
