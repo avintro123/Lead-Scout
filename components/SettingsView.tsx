@@ -15,6 +15,8 @@ import {
   ExternalLink,
   Target,
   Sliders,
+  Mail,
+  Send,
 } from "lucide-react";
 import {
   getUserSettings,
@@ -34,6 +36,14 @@ export default function SettingsView({ onRefreshHistory }: SettingsViewProps) {
   const [showApiKey, setShowApiKey] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [testMessage, setTestMessage] = useState("");
+  
+  // Resend API State
+  const [resendKeyInput, setResendKeyInput] = useState("");
+  const [showResendKey, setShowResendKey] = useState(false);
+  const [testRecipientInput, setTestRecipientInput] = useState("");
+  const [resendTestStatus, setResendTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
+  const [resendTestMessage, setResendTestMessage] = useState("");
+
   const [savedFeedback, setSavedFeedback] = useState(false);
   const [leadCount, setLeadCount] = useState(0);
 
@@ -43,6 +53,12 @@ export default function SettingsView({ onRefreshHistory }: SettingsViewProps) {
     if (s.geminiApiKey) {
       setApiKeyInput(s.geminiApiKey);
     }
+    if (s.resendApiKey) {
+      setResendKeyInput(s.resendApiKey);
+    }
+    if (s.testRecipientEmail) {
+      setTestRecipientInput(s.testRecipientEmail);
+    }
     setLeadCount(getLocalLeads().length);
   }, []);
 
@@ -51,6 +67,8 @@ export default function SettingsView({ onRefreshHistory }: SettingsViewProps) {
     const updated = saveUserSettings({
       ...settings,
       geminiApiKey: apiKeyInput.trim(),
+      resendApiKey: resendKeyInput.trim(),
+      testRecipientEmail: testRecipientInput.trim(),
     });
     setSettings(updated);
     setSavedFeedback(true);
@@ -87,6 +105,55 @@ export default function SettingsView({ onRefreshHistory }: SettingsViewProps) {
     } catch {
       setTestStatus("error");
       setTestMessage("Network error while validating key.");
+    }
+  };
+
+  const handleTestResendKey = async () => {
+    const key = resendKeyInput.trim();
+    const recipient = testRecipientInput.trim();
+    if (!key) {
+      setResendTestStatus("error");
+      setResendTestMessage("Please enter a Resend API key first.");
+      return;
+    }
+    if (!recipient) {
+      setResendTestStatus("error");
+      setResendTestMessage("Please provide a test recipient email address (the email registered on your Resend account).");
+      return;
+    }
+
+    setResendTestStatus("testing");
+    setResendTestMessage("");
+
+    try {
+      const res = await fetch("/api/send-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientEmail: recipient,
+          subject: "Verification Ping from LeadScout",
+          body: "Hello! This is an automated verification ping from your LeadScout engine via Resend. Your outreach test delivery pipeline is active and ready.",
+          provider: "resend",
+          customResendKey: key,
+          senderName: settings.senderName,
+          senderCompany: settings.senderCompany,
+          companyName: "Self Verification",
+          touchLabel: "API Key Verification Ping",
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setResendTestStatus("success");
+        setResendTestMessage(`Resend API verified! Verification test dispatched to ${recipient}.`);
+        saveUserSettings({ resendApiKey: key, testRecipientEmail: recipient });
+      } else {
+        setResendTestStatus("error");
+        setResendTestMessage(data.error || "Failed to authenticate with Resend.");
+      }
+    } catch {
+      setResendTestStatus("error");
+      setResendTestMessage("Network error while communicating with Resend delivery engine.");
     }
   };
 
@@ -234,7 +301,117 @@ export default function SettingsView({ onRefreshHistory }: SettingsViewProps) {
           </div>
         </section>
 
-        {/* Section 2: Sender Persona */}
+        {/* Section 2: Email Delivery & Test Dispatch */}
+        <section className="bg-surface border border-border rounded-lg p-6 shadow-xs">
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+            <Mail className="w-4 h-4 text-fg" />
+            <h2 className="text-[14px] font-semibold text-fg">Email Delivery &amp; Test Dispatch (Resend API)</h2>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Default Test Recipient Email */}
+              <div>
+                <label className="block text-[12px] font-medium text-fg mb-1">
+                  Default Test Recipient Inbox
+                </label>
+                <input
+                  type="email"
+                  value={testRecipientInput}
+                  onChange={(e) => setTestRecipientInput(e.target.value)}
+                  placeholder="e.g. founder@yourcompany.com"
+                  className="w-full px-3 py-2 text-[13px] bg-subtle/40 border border-border rounded-md text-fg focus:outline-none focus:border-fg/40 focus:ring-1 focus:ring-fg/20 transition-colors"
+                />
+                <p className="text-[11px] text-fg-muted mt-1">
+                  Pre-fills the test dispatch modal when previewing sequences.
+                </p>
+              </div>
+
+              {/* Resend API Key */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[12px] font-medium text-fg">Resend API Key</label>
+                  <a
+                    href="https://resend.com/api-keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] text-accent hover:underline inline-flex items-center gap-1"
+                  >
+                    Get free key
+                    <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showResendKey ? "text" : "password"}
+                    value={resendKeyInput}
+                    onChange={(e) => setResendKeyInput(e.target.value)}
+                    placeholder="re_..."
+                    className="w-full px-3 py-2 text-[13px] font-mono bg-subtle/40 border border-border rounded-md text-fg placeholder:text-fg-faint focus:outline-none focus:border-fg/40 focus:ring-1 focus:ring-fg/20 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResendKey(!showResendKey)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-fg-muted hover:text-fg font-medium transition-colors"
+                  >
+                    {showResendKey ? "Hide" : "Show"}
+                  </button>
+                </div>
+                <p className="text-[11px] text-fg-muted mt-1">
+                  Optional. If left blank, LeadScout uses Instant Sandbox Simulation.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={handleTestResendKey}
+                disabled={resendTestStatus === "testing"}
+                className="px-3 py-1.5 text-[12px] font-medium border border-border rounded-md bg-subtle hover:bg-subtle/80 text-fg transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {resendTestStatus === "testing" ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin-slow" />
+                    Sending Ping...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3 h-3 text-accent" />
+                    <span>Send Verification Ping</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveSettings}
+                className="px-3 py-1.5 text-[12px] font-medium bg-fg text-surface rounded-md hover:bg-fg/90 transition-colors shadow-2xs"
+              >
+                Save Delivery Settings
+              </button>
+            </div>
+
+            {resendTestMessage && (
+              <div
+                className={`p-2.5 rounded-md text-[12px] flex items-center gap-2 ${
+                  resendTestStatus === "success"
+                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                    : "bg-rose-50 text-rose-800 border border-rose-200"
+                }`}
+              >
+                {resendTestStatus === "success" ? (
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                )}
+                <span>{resendTestMessage}</span>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Section 3: Sender Persona */}
         <section className="bg-surface border border-border rounded-lg p-6 shadow-xs">
           <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
             <User className="w-4 h-4 text-fg" />

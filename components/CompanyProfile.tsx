@@ -30,12 +30,14 @@ import {
   TrendingUp,
   Loader2,
   ShieldAlert,
+  Send,
 } from "lucide-react";
 import { analyzeEmailDeliverability } from "@/lib/spam-checker";
 import { RewriteStyle } from "@/app/api/rewrite/route";
 import { CompanyDossier, OutreachEmail, ActivityItem, CompetitorItem, BattlecardSummary } from "@/lib/types";
 import ActivityTimeline from "./ActivityTimeline";
 import ExecutiveBriefModal from "./ExecutiveBriefModal";
+import TestEmailModal from "./TestEmailModal";
 import IcpScoringCard from "./IcpScoringCard";
 import { calculateIcpScore, getTierBadgeStyle } from "@/lib/icp-scorer";
 import { getUserSettings } from "@/lib/storage";
@@ -109,6 +111,7 @@ export default function CompanyProfile({
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [showVariations, setShowVariations] = useState(false);
   const [showBriefModal, setShowBriefModal] = useState(false);
+  const [showTestModal, setShowTestModal] = useState(false);
 
   const [selectedCompetitorIdx, setSelectedCompetitorIdx] = useState(0);
 
@@ -793,6 +796,15 @@ export default function CompanyProfile({
               </button>
 
               <button
+                onClick={() => setShowTestModal(true)}
+                className="px-2.5 py-1 text-[11px] font-medium text-fg bg-surface border border-border rounded-md hover:bg-subtle transition-colors inline-flex items-center gap-1.5 shadow-2xs"
+                title="Send test to your inbox or simulate client rendering"
+              >
+                <Send className="w-3 h-3 text-accent" />
+                <span>Test Send / Inbox</span>
+              </button>
+
+              <button
                 onClick={() => {
                   const allText = currentEmails
                     .map(
@@ -909,6 +921,16 @@ export default function CompanyProfile({
                     title="Revert to original AI draft"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowTestModal(true)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-medium bg-surface border border-border hover:bg-subtle text-fg rounded-md transition-colors shadow-2xs"
+                    title="Send test email to your real inbox"
+                  >
+                    <Send className="w-3 h-3 text-accent" />
+                    <span>Test Send</span>
                   </button>
 
                   <CopyBtn
@@ -1492,6 +1514,18 @@ export default function CompanyProfile({
         dossier={dossier}
         emails={currentEmails}
       />
+
+      {/* Test Email & Real Inbox Modal */}
+      {currentEmails.length > 0 && (
+        <TestEmailModal
+          isOpen={showTestModal}
+          onClose={() => setShowTestModal(false)}
+          dossier={dossier}
+          currentEmail={activeEmail}
+          allEmails={currentEmails}
+          activeTouchIndex={activeEmailIdx}
+        />
+      )}
     </div>
   );
 }

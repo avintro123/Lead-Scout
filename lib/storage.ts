@@ -6,6 +6,9 @@ const PINNED_STORAGE_KEY = "leadscout_pinned_domains";
 
 export interface UserSettings {
   geminiApiKey?: string;
+  resendApiKey?: string;
+  testRecipientEmail?: string;
+  preferredDeliveryProvider?: "resend" | "simulation";
   senderName: string;
   senderCompany: string;
   senderRole: string;
@@ -17,6 +20,9 @@ export interface UserSettings {
 
 export const DEFAULT_SETTINGS: UserSettings = {
   geminiApiKey: "",
+  resendApiKey: "",
+  testRecipientEmail: "",
+  preferredDeliveryProvider: "simulation",
   senderName: "Alex Rivera",
   senderCompany: "Acquisition Engine",
   senderRole: "Head of Growth",
