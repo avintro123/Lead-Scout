@@ -60,20 +60,37 @@ export function convertTextToHtmlParagraphs(text: string): string {
 
   return paragraphs
     .map((p) => {
-      // Check if paragraph is a bullet list (lines starting with - or * or numbered 1.)
-      const lines = p.split(/\n/).map((l) => l.trim());
-      const isBulletList = lines.every(
-        (l) => /^[•\-\*]\s/.test(l) || /^\d+\.\s/.test(l),
-      );
+      const lines = p.split(/\n/).map((l) => l.trim()).filter(Boolean);
+      const isBullet = (l: string) => /^[•\-\*]\s/.test(l) || /^\d+\.\s/.test(l);
+      const hasBullets = lines.some(isBullet);
 
-      if (isBulletList && lines.length > 1) {
-        const listItems = lines
-          .map((l) => {
-            const cleanItem = l.replace(/^[•\-\*]\s*|^\d+\.\s*/, "");
-            return `<li style="margin-bottom: 6px; line-height: 1.5;">${escapeHtml(cleanItem)}</li>`;
-          })
-          .join("");
-        return `<ul style="margin: 12px 0; padding-left: 20px; color: #1e293b;">${listItems}</ul>`;
+      if (hasBullets) {
+        let result = "";
+        let inList = false;
+        let listItems = "";
+
+        for (const line of lines) {
+          if (isBullet(line)) {
+            if (!inList) {
+              inList = true;
+            }
+            const cleanItem = line.replace(/^[•\-\*]\s*|^\d+\.\s*/, "");
+            listItems += `<li style="margin-bottom: 6px; line-height: 1.5;">${escapeHtml(cleanItem)}</li>`;
+          } else {
+            if (inList) {
+              result += `<ul style="margin: 10px 0; padding-left: 20px; color: #1e293b;">${listItems}</ul>`;
+              listItems = "";
+              inList = false;
+            }
+            result += `<p style="margin: 0 0 10px 0; line-height: 1.6; color: #1e293b; font-size: 14.5px;">${escapeHtml(line)}</p>`;
+          }
+        }
+
+        if (inList) {
+          result += `<ul style="margin: 10px 0; padding-left: 20px; color: #1e293b;">${listItems}</ul>`;
+        }
+
+        return result;
       }
 
       // Standard paragraph: preserve single line breaks with <br/>
