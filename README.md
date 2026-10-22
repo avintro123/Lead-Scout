@@ -6,6 +6,8 @@
 
 Turn any company domain or market niche query into an executive research dossier and a 4-touch personalized outreach sequence in seconds.
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Vercel-black?style=for-the-badge&logo=vercel)](https://lead-scout-2kcj-4137k2txi-avantiks-projects.vercel.app/)
+
 [![Next.js](https://img.shields.io/badge/Next.js-16.3-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=flat&logo=tailwindcss)](https://tailwindcss.com/)
@@ -14,7 +16,7 @@ Turn any company domain or market niche query into an executive research dossier
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=flat&logo=supabase)](https://supabase.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[Features](#-key-features) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [Environment Variables](#-environment-variables) • [Deployment](#-deployment) • [Keyboard Shortcuts](#-keyboard-shortcuts)
+[🚀 Live Demo](https://lead-scout-2kcj-4137k2txi-avantiks-projects.vercel.app/) • [Features](#-key-features) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [Environment Variables](#-environment-variables) • [Keyboard Shortcuts](#-keyboard-shortcuts)
 
 </div>
 
