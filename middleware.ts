@@ -16,13 +16,19 @@ export function middleware(req: NextRequest) {
   // 2. CSRF & Same-Origin Protection for mutating requests
   if (["POST", "DELETE", "PUT", "PATCH"].includes(method) && pathname.startsWith("/api/")) {
     const origin = req.headers.get("origin");
-    const host = req.headers.get("host");
+    const forwardedHost = req.headers.get("x-forwarded-host");
+    const host = forwardedHost || req.headers.get("host");
 
     if (origin && host) {
       try {
         const originUrl = new URL(origin);
-        // Ensure origin hostname matches host
-        if (originUrl.host !== host) {
+        // Ensure origin hostname matches host or forwarded host (ignoring default ports if omitted)
+        const hostWithoutPort = host.split(":")[0];
+        if (
+          originUrl.host !== host &&
+          originUrl.hostname !== host &&
+          originUrl.hostname !== hostWithoutPort
+        ) {
           return NextResponse.json(
             { error: "Forbidden: Cross-Origin Request Blocked" },
             { status: 403 }
