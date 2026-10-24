@@ -34,14 +34,26 @@ import {
 } from "lucide-react";
 import { analyzeEmailDeliverability } from "@/lib/spam-checker";
 import { RewriteStyle } from "@/app/api/rewrite/route";
-import { CompanyDossier, OutreachEmail, ActivityItem, CompetitorItem, BattlecardSummary } from "@/lib/types";
+import {
+  CompanyDossier,
+  OutreachEmail,
+  ActivityItem,
+  CompetitorItem,
+  BattlecardSummary,
+  DecisionMakerContact,
+} from "@/lib/types";
 import ActivityTimeline from "./ActivityTimeline";
 import ExecutiveBriefModal from "./ExecutiveBriefModal";
 import TestEmailModal from "./TestEmailModal";
 import IcpScoringCard from "./IcpScoringCard";
+import DecisionMakersView from "./DecisionMakersView";
 import { calculateIcpScore, getTierBadgeStyle } from "@/lib/icp-scorer";
 import { getUserSettings } from "@/lib/storage";
 import { getFallbackDossier } from "@/lib/mock-data";
+import {
+  discoverDecisionMakers,
+  adaptSequenceForPersona,
+} from "@/lib/contact-discovery";
 import {
   generateSingleCompanyCSV,
   triggerCSVDownload,
@@ -49,7 +61,14 @@ import {
   SubjectVariation,
 } from "@/lib/export-csv";
 
-type ProfileTab = "overview" | "signals" | "outreach" | "battlecards" | "tech" | "activity";
+type ProfileTab =
+  | "overview"
+  | "signals"
+  | "contacts"
+  | "outreach"
+  | "battlecards"
+  | "tech"
+  | "activity";
 
 interface CompanyProfileProps {
   dossier: CompanyDossier;
@@ -115,6 +134,20 @@ export default function CompanyProfile({
 
   const [selectedCompetitorIdx, setSelectedCompetitorIdx] = useState(0);
 
+  // Decision-maker & persona targeting state
+  const [selectedContact, setSelectedContact] = useState<DecisionMakerContact | null>(null);
+  const [customContacts, setCustomContacts] = useState<DecisionMakerContact[]>([]);
+
+  // Discovered decision-maker contacts
+  const discoveredContacts = useMemo(
+    () => discoverDecisionMakers(dossier),
+    [dossier]
+  );
+  const effectiveContacts = useMemo(
+    () => [...customContacts, ...discoveredContacts],
+    [customContacts, discoveredContacts]
+  );
+
   // Editable sequence state
   const [currentEmails, setCurrentEmails] = useState<OutreachEmail[]>(emails || []);
 
@@ -123,6 +156,25 @@ export default function CompanyProfile({
       setCurrentEmails(emails);
     }
   }, [emails]);
+
+  const handleSelectContact = (contact: DecisionMakerContact) => {
+    setSelectedContact(contact);
+    const baseEmails = emails || currentEmails;
+    const adapted = adaptSequenceForPersona(baseEmails, contact, dossier.companyName);
+    setCurrentEmails(adapted);
+    setActiveTab("outreach");
+  };
+
+  const handleClearSelectedContact = () => {
+    setSelectedContact(null);
+    if (emails) {
+      setCurrentEmails(emails);
+    }
+  };
+
+  const handleAddCustomContact = (contact: DecisionMakerContact) => {
+    setCustomContacts((prev) => [contact, ...prev]);
+  };
 
   const settings = getUserSettings();
 
@@ -376,6 +428,7 @@ export default function CompanyProfile({
   const tabs: { id: ProfileTab; label: string; badge?: string | number }[] = [
     { id: "overview", label: "Executive Dossier" },
     { id: "signals", label: "Pain Points & Opportunities", badge: dossier.top3PainPoints.length },
+    { id: "contacts", label: "Decision Makers & Leads", badge: effectiveContacts.length },
     { id: "outreach", label: "Outreach Sequences", badge: currentEmails ? currentEmails.length : undefined },
     { id: "battlecards", label: "Competitor Radar & Battlecards", badge: effectiveCompetitors.length },
     { id: "tech", label: "Tech Stack & Architecture", badge: dossier.techTags.length },
@@ -765,9 +818,47 @@ export default function CompanyProfile({
         </div>
       )}
 
+      {/* TAB: DECISION MAKERS & LEADS */}
+      {activeTab === "contacts" && (
+        <DecisionMakersView
+          dossier={dossier}
+          contacts={effectiveContacts}
+          selectedContact={selectedContact}
+          onSelectContact={handleSelectContact}
+          onClearSelectedContact={handleClearSelectedContact}
+          onAddCustomContact={handleAddCustomContact}
+        />
+      )}
+
       {/* TAB 3: OUTREACH SEQUENCES (WITH INLINE EDITOR & A/B SUBJECT LINES) */}
       {activeTab === "outreach" && currentEmails && currentEmails.length > 0 && (
         <div className="space-y-4 animate-fade-in">
+          {/* Active Contact Personalization Pill */}
+          {selectedContact && (
+            <div className="bg-emerald-50/90 border border-emerald-200 rounded-lg p-3.5 flex items-center justify-between gap-3 shadow-2xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                  {selectedContact.firstName.charAt(0)}
+                  {selectedContact.lastName.charAt(0)}
+                </div>
+                <div>
+                  <span className="text-[12px] font-semibold text-emerald-950 block">
+                    Sequence Tailored for {selectedContact.fullName} ({selectedContact.title})
+                  </span>
+                  <span className="text-[11px] text-emerald-800">
+                    Recipient: {selectedContact.corporateEmail} · Priority: {selectedContact.department}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={handleClearSelectedContact}
+                className="text-[11px] font-medium text-emerald-800 hover:text-emerald-950 px-2.5 py-1 rounded bg-white border border-emerald-200 hover:bg-emerald-100/50 transition-colors shrink-0"
+              >
+                Reset to General
+              </button>
+            </div>
+          )}
+
           {/* Outreach Toolbar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-subtle/50 border border-border rounded-lg text-[12px]">
             <div className="flex items-center gap-2">
@@ -1524,6 +1615,7 @@ export default function CompanyProfile({
           currentEmail={activeEmail}
           allEmails={currentEmails}
           activeTouchIndex={activeEmailIdx}
+          targetContactEmail={selectedContact?.corporateEmail}
         />
       )}
     </div>

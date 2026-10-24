@@ -324,7 +324,7 @@ async function runTestSuite() {
   // -------------------------------------------------------------------------
   console.log("\n\x1b[36m[GROUP 9] Campaign CSV Export Schemas (Apollo & Lemlist)\x1b[0m");
 
-  const { generateSingleCompanyCSV, generateSubjectLineVariations } = await import("../lib/export-csv.ts");
+  const { generateSingleCompanyCSV, generateSubjectLineVariations, generateDecisionMakersCSV } = await import("../lib/export-csv.ts");
 
   const apolloCsv = generateSingleCompanyCSV(MOCK_DOSSIER, null, "apollo");
   assert(apolloCsv.includes("Company Name,Website,Industry"), "Apollo CSV header conforms to schema");
@@ -341,6 +341,71 @@ async function runTestSuite() {
   assert(subjectVariations.length === 3, "Generates 3 strategic subject line variations");
   assert(subjectVariations.some(v => v.angle.includes("Curiosity")), "Includes 'Curiosity / Question' angle");
   assert(subjectVariations.some(v => v.angle.includes("Data")), "Includes 'Data / Metrics Hook' angle");
+
+  // -------------------------------------------------------------------------
+  // TEST GROUP 10: Decision-Maker Discovery & Email Pattern Engine
+  // -------------------------------------------------------------------------
+  console.log("\n\x1b[36m[GROUP 10] Decision-Maker Discovery & Email Pattern Engine\x1b[0m");
+
+  const {
+    detectCompanyEmailPattern,
+    generateCorporateEmail,
+    discoverDecisionMakers,
+    adaptSequenceForPersona,
+  } = await import("../lib/contact-discovery.ts");
+
+  // 1. Pattern Detection
+  const enterprisePattern = detectCompanyEmailPattern("stripe.com", "8,000+ employees");
+  assert(enterprisePattern.primaryPattern === "{first}.{last}@{domain}", "Enterprise scale predicts first.last@domain");
+  assert(enterprisePattern.confidence >= 90, "Enterprise pattern has >= 90% confidence score");
+
+  const startupPattern = detectCompanyEmailPattern("earlystage.ai", "1-10 employees");
+  assert(startupPattern.primaryPattern === "{first}@{domain}", "Startup scale predicts first@domain");
+
+  // 2. Email Address Generation & Sanitization
+  const email1 = generateCorporateEmail("David", "Singleton", "stripe.com", "{first}.{last}@{domain}");
+  assert(email1 === "david.singleton@stripe.com", "Generates correct first.last corporate email");
+
+  const email2 = generateCorporateEmail("Élodie", "Müller-Smith", "acme.io", "{first}.{last}@{domain}");
+  assert(email2 === "elodie.mullersmith@acme.io", "Sanitizes accents, hyphens, and umlauts in name");
+
+  // 3. Persona Discovery
+  const stripeContacts = discoverDecisionMakers(MOCK_DOSSIER);
+  assert(stripeContacts.length >= 3, "Discovers 3+ decision-maker personas for target account");
+  assert(stripeContacts.some(c => c.seniority === "C-Level"), "Identifies C-Level leadership");
+  assert(stripeContacts.some(c => c.department === "Engineering & Tech"), "Identifies Engineering & Tech leadership");
+  assert(stripeContacts.some(c => c.department === "Sales & Revenue"), "Identifies Sales & Revenue leadership");
+
+  const dynamicDossier = {
+    ...MOCK_DOSSIER,
+    domain: "cloudscale-telemetry.io",
+    companyName: "CloudScale",
+    decisionMakers: undefined,
+  };
+  const dynamicContacts = discoverDecisionMakers(dynamicDossier);
+  assert(dynamicContacts.length === 4, "Algorithmic discovery creates 4 balanced departmental personas for unseen domain");
+  assert(dynamicContacts[0].corporateEmail.endsWith("@cloudscale-telemetry.io"), "Guessed email matches target company domain");
+  assert(dynamicContacts[0].linkedinSearchUrl.includes("linkedin.com/search"), "Generates valid LinkedIn verification URL");
+
+  // 4. Role-Adapted Sequence Personalization
+  const mockEmails = [
+    { type: "cold_open", label: "Cold Open", subject: "Quick question", body: "Hi [Name], general cold pitch." },
+    { type: "value_add", label: "Case Study", subject: "Industry data", body: "Hi [Name], general case study." },
+    { type: "linkedin_inmail", label: "InMail", subject: "Connect", body: "Hey [Name], connect." },
+    { type: "follow_up", label: "Closing", subject: "Closing", body: "Hi [Name], follow up." },
+  ];
+
+  const adapted = adaptSequenceForPersona(mockEmails, stripeContacts[0], "Stripe");
+  assert(adapted.length === 4, "Adapts all 4 sequence touches");
+  assert(adapted[0].body.includes(`Hi ${stripeContacts[0].firstName}`), "Touch 1 greets contact by first name");
+  assert(adapted[0].body.includes(stripeContacts[0].title), "Touch 1 references exact executive title");
+  assert(adapted[0].body.includes(stripeContacts[0].departmentPainPoint), "Touch 1 injects department operational priority");
+  assert(adapted[2].body.includes(stripeContacts[0].firstName), "LinkedIn InMail customized with first name");
+
+  // 5. Contacts CSV Export
+  const contactsCsv = generateDecisionMakersCSV(MOCK_DOSSIER, stripeContacts);
+  assert(contactsCsv.includes("First Name,Last Name,Full Name,Job Title"), "Contacts CSV contains RFC 4180 headers");
+  assert(contactsCsv.includes(stripeContacts[0].corporateEmail), "Contacts CSV includes guessed corporate email");
 
   // -------------------------------------------------------------------------
   // FINAL SUMMARY

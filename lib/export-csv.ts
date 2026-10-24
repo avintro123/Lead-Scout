@@ -1,4 +1,4 @@
-import { CompanyDossier, OutreachEmail, LeadRecord } from "./types";
+import { CompanyDossier, OutreachEmail, LeadRecord, DecisionMakerContact } from "./types";
 
 /**
  * Escapes fields according to RFC 4180 CSV standard.
@@ -9,6 +9,48 @@ export function escapeCSV(value: string | number | undefined | null): string {
   const str = String(value).trim();
   const escaped = str.replace(/"/g, '""');
   return `"${escaped}"`;
+}
+
+/**
+ * Generates an export of discovered decision-maker contacts with corporate emails.
+ */
+export function generateDecisionMakersCSV(
+  dossier: CompanyDossier,
+  contacts: DecisionMakerContact[]
+): string {
+  const headers = [
+    "First Name",
+    "Last Name",
+    "Full Name",
+    "Job Title",
+    "Department",
+    "Seniority",
+    "Corporate Email",
+    "Email Match Confidence",
+    "Email Pattern",
+    "Company Name",
+    "Company Domain",
+    "Role Operational Focus",
+    "LinkedIn Search URL",
+  ];
+
+  const rows = contacts.map((c) => [
+    escapeCSV(c.firstName),
+    escapeCSV(c.lastName),
+    escapeCSV(c.fullName),
+    escapeCSV(c.title),
+    escapeCSV(c.department),
+    escapeCSV(c.seniority),
+    escapeCSV(c.corporateEmail),
+    escapeCSV(`${c.emailConfidence}%`),
+    escapeCSV(c.patternUsed),
+    escapeCSV(dossier.companyName),
+    escapeCSV(dossier.domain),
+    escapeCSV(c.departmentPainPoint),
+    escapeCSV(c.linkedinSearchUrl),
+  ]);
+
+  return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
 }
 
 /**

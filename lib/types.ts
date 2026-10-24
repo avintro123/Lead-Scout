@@ -23,6 +23,40 @@ export interface BattlecardSummary {
   }[];
 }
 
+export type SeniorityLevel = "C-Level" | "VP" | "Head / Director" | "Lead";
+export type Department =
+  | "Sales & Revenue"
+  | "Engineering & Tech"
+  | "Marketing & Growth"
+  | "Product"
+  | "Executive & Operations";
+
+export interface EmailPatternGuess {
+  pattern: "{first}.{last}@{domain}" | "{first}@{domain}" | "{f}{last}@{domain}" | "{first}{last}@{domain}";
+  example: string;
+  confidenceScore: number; // 0-100%
+  isLikelyPrimary: boolean;
+  sampleName: string;
+}
+
+export interface DecisionMakerContact {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  title: string;
+  department: Department;
+  seniority: SeniorityLevel;
+  corporateEmail: string;
+  emailConfidence: number; // 0-100%
+  patternUsed: string;
+  departmentPainPoint: string;
+  talkingAngle: string;
+  suggestedHook: string;
+  linkedinSearchUrl: string;
+  isVerifiedPattern?: boolean;
+}
+
 export interface CompanyDossier {
   companyName: string;
   domain: string;
@@ -38,6 +72,7 @@ export interface CompanyDossier {
   keyFeatures: string[];
   competitors?: CompetitorItem[];
   battlecardSummary?: BattlecardSummary;
+  decisionMakers?: DecisionMakerContact[];
 }
 
 export interface OutreachEmail {

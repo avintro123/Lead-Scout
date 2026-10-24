@@ -34,6 +34,7 @@ interface TestEmailModalProps {
   currentEmail: OutreachEmail;
   allEmails: OutreachEmail[];
   activeTouchIndex: number;
+  targetContactEmail?: string;
 }
 
 type ModalTab = "dispatch" | "preview" | "diagnostics";
@@ -46,6 +47,7 @@ export default function TestEmailModal({
   currentEmail,
   allEmails,
   activeTouchIndex,
+  targetContactEmail,
 }: TestEmailModalProps) {
   const [activeTab, setActiveTab] = useState<ModalTab>("dispatch");
   const [deviceView, setDeviceView] = useState<DeviceView>("gmail_desktop");
@@ -75,7 +77,9 @@ export default function TestEmailModal({
   useEffect(() => {
     if (isOpen) {
       const s = getUserSettings();
-      if (s.testRecipientEmail && !recipient) {
+      if (targetContactEmail) {
+        setRecipient(targetContactEmail);
+      } else if (s.testRecipientEmail && !recipient) {
         setRecipient(s.testRecipientEmail);
       }
       if (s.resendApiKey && !customResendKey) {
@@ -86,7 +90,7 @@ export default function TestEmailModal({
       }
       setSendResult(null);
     }
-  }, [isOpen]);
+  }, [isOpen, targetContactEmail]);
 
   // Personalized body helper
   const resolvedBody = useMemo(() => {
