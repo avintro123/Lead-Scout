@@ -9,6 +9,7 @@ import SettingsView from "@/components/SettingsView";
 import CommandPalette from "@/components/CommandPalette";
 import BatchScoutModal from "@/components/BatchScoutModal";
 import AdminAuthModal from "@/components/AdminAuthModal";
+import PipelineView from "@/components/PipelineView";
 import {
   OutreachObjective,
   ActivityItem,
@@ -615,6 +616,14 @@ export default function App() {
           {activeView === "settings" && (
             <SettingsView
               onRefreshHistory={() => setRefreshTrigger((p) => p + 1)}
+            />
+          )}
+
+          {/* VIEW 4: PIPELINE KANBAN */}
+          {activeView === "pipeline" && (
+            <PipelineView
+              onViewDossier={handleLoadReport}
+              refreshTrigger={refreshTrigger}
             />
           )}
         </main>

@@ -98,6 +98,54 @@ export interface LeadRecord {
   created_at: string;
 }
 
+export type PipelineStage = "cold" | "contacted" | "replied" | "won" | "lost";
+
+export const PIPELINE_STAGES: Record<PipelineStage, { label: string; color: string; bgColor: string; borderColor: string; icon: string }> = {
+  cold: { label: "Cold Leads", color: "#6b7280", bgColor: "#f3f4f6", borderColor: "#e5e7eb", icon: "❄️" },
+  contacted: { label: "Contacted", color: "#2563eb", bgColor: "#eff6ff", borderColor: "#bfdbfe", icon: "📧" },
+  replied: { label: "Replied", color: "#d97706", bgColor: "#fffbeb", borderColor: "#fde68a", icon: "💬" },
+  won: { label: "Won", color: "#059669", bgColor: "#ecfdf5", borderColor: "#a7f3d0", icon: "🎉" },
+  lost: { label: "Lost", color: "#dc2626", bgColor: "#fef2f2", borderColor: "#fecaca", icon: "✗" },
+};
+
+export interface PipelineLead {
+  id: string;
+  domain: string;
+  companyName: string;
+  stage: PipelineStage;
+  objective: string;
+  icpScore?: number;
+  icpTier?: IcpTier;
+  estimatedValue?: number;
+  contactName?: string;
+  contactEmail?: string;
+  contactTitle?: string;
+  notes: string;
+  followUpDate?: string;
+  followUpNote?: string;
+  touchesSent: number;
+  lastActivityAt: string;
+  createdAt: string;
+  movedAt: string;
+  dossierRef?: ScoutResult;
+  tags: string[];
+}
+
+export interface PipelineMetrics {
+  totalLeads: number;
+  byStage: Record<PipelineStage, number>;
+  conversionRates: {
+    coldToContacted: number;
+    contactedToReplied: number;
+    repliedToWon: number;
+    overallWinRate: number;
+  };
+  estimatedPipelineValue: number;
+  avgDaysInPipeline: number;
+  upcomingFollowUps: number;
+  overdueFollowUps: number;
+}
+
 export type OutreachObjective =
   | "client_acquisition"
   | "partnership_inquiry"

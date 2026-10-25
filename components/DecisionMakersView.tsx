@@ -133,7 +133,7 @@ export default function DecisionMakersView({
 
   const patternInfo = detectCompanyEmailPattern(
     dossier.domain,
-    dossier.estimatedHeadcount
+    dossier.estimatedHeadcount,
   );
 
   const handleCopyEmail = (email: string, id: string) => {
@@ -146,7 +146,7 @@ export default function DecisionMakersView({
     const csv = generateDecisionMakersCSV(dossier, contacts);
     triggerCSVDownload(
       csv,
-      `${dossier.companyName.toLowerCase().replace(/\s+/g, "-")}-decision-makers.csv`
+      `${dossier.companyName.toLowerCase().replace(/\s+/g, "-")}-decision-makers.csv`,
     );
   };
 
@@ -162,13 +162,14 @@ export default function DecisionMakersView({
 
   const handleSaveCustomContact = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customFirst.trim() || !customLast.trim() || !customTitle.trim()) return;
+    if (!customFirst.trim() || !customLast.trim() || !customTitle.trim())
+      return;
 
     const email = generateCorporateEmail(
       customFirst,
       customLast,
       dossier.domain,
-      patternInfo.primaryPattern
+      patternInfo.primaryPattern,
     );
 
     const newContact: DecisionMakerContact = {
@@ -178,19 +179,25 @@ export default function DecisionMakersView({
       fullName: `${customFirst.trim()} ${customLast.trim()}`,
       title: customTitle.trim(),
       department: customDept,
-      seniority: customTitle.toLowerCase().includes("chief") || customTitle.toLowerCase().includes("ceo") || customTitle.toLowerCase().includes("cto")
-        ? "C-Level"
-        : customTitle.toLowerCase().includes("vp")
-        ? "VP"
-        : "Head / Director",
+      seniority:
+        customTitle.toLowerCase().includes("chief") ||
+        customTitle.toLowerCase().includes("ceo") ||
+        customTitle.toLowerCase().includes("cto")
+          ? "C-Level"
+          : customTitle.toLowerCase().includes("vp")
+            ? "VP"
+            : "Head / Director",
       corporateEmail: email,
       emailConfidence: patternInfo.confidence,
-      patternUsed: patternInfo.primaryPattern.replace("{domain}", dossier.domain),
+      patternUsed: patternInfo.primaryPattern.replace(
+        "{domain}",
+        dossier.domain,
+      ),
       departmentPainPoint: `Optimizing department workflows and execution velocity for ${customDept.toLowerCase()}.`,
       talkingAngle: `Streamlining operations and increasing leverage for ${customTitle}.`,
       suggestedHook: `Aligning with ${customTitle} initiatives across ${dossier.companyName}.`,
       linkedinSearchUrl: `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(
-        `${customFirst} ${customLast} ${dossier.companyName}`
+        `${customFirst} ${customLast} ${dossier.companyName}`,
       )}`,
       isVerifiedPattern: false,
     };
@@ -221,7 +228,8 @@ export default function DecisionMakersView({
                 </span>
               </div>
               <p className="text-[12px] text-emerald-800 mt-0.5">
-                4-touch sequence in the Outreach tab is customized for {selectedContact.corporateEmail} ({selectedContact.department}).
+                4-touch sequence in the Outreach tab is customized for{" "}
+                {selectedContact.corporateEmail} ({selectedContact.department}).
               </p>
             </div>
           </div>
@@ -249,7 +257,8 @@ export default function DecisionMakersView({
               </span>
             </div>
             <p className="text-[13px] text-fg-secondary">
-              Based on {dossier.companyName}&apos;s scale ({dossier.estimatedHeadcount}), the dominant email convention is{" "}
+              Based on {dossier.companyName}&apos;s scale (
+              {dossier.estimatedHeadcount}), the dominant email convention is{" "}
               <code className="px-1.5 py-0.5 rounded bg-subtle text-fg font-mono text-[12px] border border-border font-semibold">
                 {patternInfo.primaryPattern}
               </code>
@@ -366,7 +375,7 @@ export default function DecisionMakersView({
                         </h4>
                         <span
                           className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${getSeniorityBadgeStyle(
-                            contact.seniority
+                            contact.seniority,
                           )}`}
                         >
                           {contact.seniority}
@@ -406,7 +415,9 @@ export default function DecisionMakersView({
                       {contact.emailConfidence}% Match
                     </span>
                     <button
-                      onClick={() => handleCopyEmail(contact.corporateEmail, contact.id)}
+                      onClick={() =>
+                        handleCopyEmail(contact.corporateEmail, contact.id)
+                      }
                       className="p-1 rounded text-fg-muted hover:text-fg hover:bg-surface border border-transparent hover:border-border transition-colors"
                       title="Copy email to clipboard"
                     >
@@ -471,7 +482,8 @@ export default function DecisionMakersView({
       {filteredContacts.length === 0 && (
         <div className="p-8 text-center bg-surface border border-border rounded-lg">
           <p className="text-sm text-fg-muted">
-            No contacts match the selected filter. Try choosing &ldquo;All Roles&rdquo; or add a custom lead.
+            No contacts match the selected filter. Try choosing &ldquo;All
+            Roles&rdquo; or add a custom lead.
           </p>
         </div>
       )}
@@ -483,7 +495,9 @@ export default function DecisionMakersView({
             <div className="flex items-center justify-between pb-3 border-b border-border">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-fg" />
-                <h3 className="text-sm font-semibold text-fg">Add Decision Maker / Lead</h3>
+                <h3 className="text-sm font-semibold text-fg">
+                  Add Decision Maker / Lead
+                </h3>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
@@ -550,7 +564,9 @@ export default function DecisionMakersView({
                   <option value="Engineering & Tech">Engineering & Tech</option>
                   <option value="Product">Product</option>
                   <option value="Marketing & Growth">Marketing & Growth</option>
-                  <option value="Executive & Operations">Executive & Operations</option>
+                  <option value="Executive & Operations">
+                    Executive & Operations
+                  </option>
                 </select>
               </div>
 
@@ -564,7 +580,7 @@ export default function DecisionMakersView({
                       customFirst,
                       customLast,
                       dossier.domain,
-                      patternInfo.primaryPattern
+                      patternInfo.primaryPattern,
                     )}
                   </span>
                 </div>

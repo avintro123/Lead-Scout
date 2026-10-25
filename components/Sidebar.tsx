@@ -11,11 +11,12 @@ import {
   ExternalLink,
   ShieldCheck,
   Lock,
+  Kanban,
 } from "lucide-react";
 import { getLocalLeads, getUserSettings, UserSettings } from "@/lib/storage";
 import { LeadRecord, ScoutResult } from "@/lib/types";
 
-export type View = "research" | "companies" | "settings";
+export type View = "research" | "companies" | "pipeline" | "settings";
 
 interface SidebarProps {
   activeView: View;
@@ -66,6 +67,8 @@ export default function Sidebar({
         onNavigate("research");
       } else if (e.key === "c" || e.key === "C") {
         onNavigate("companies");
+      } else if (e.key === "p" || e.key === "P") {
+        onNavigate("pipeline");
       } else if (e.key === "s" || e.key === "S") {
         onNavigate("settings");
       }
@@ -89,6 +92,13 @@ export default function Sidebar({
       icon: Building2,
       shortcut: "C",
       count: companyCount > 0 ? companyCount : undefined,
+    },
+    {
+      id: "pipeline" as View,
+      label: "Pipeline",
+      icon: Kanban,
+      shortcut: "P",
+      count: undefined,
     },
     {
       id: "settings" as View,

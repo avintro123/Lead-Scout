@@ -1,4 +1,4 @@
-import { LeadRecord, ScoutResult, IcpProfileSettings } from "./types";
+import { LeadRecord, ScoutResult, IcpProfileSettings, PipelineLead, PipelineStage, PipelineMetrics } from "./types";
 
 const LEADS_STORAGE_KEY = "leadscout_local_leads";
 const SETTINGS_STORAGE_KEY = "leadscout_settings";
@@ -26,7 +26,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   senderName: "Alex Rivera",
   senderCompany: "Acquisition Engine",
   senderRole: "Head of Growth",
-  valueProp: "We help B2B SaaS teams cut enterprise sales friction and accelerate pipeline velocity.",
+  valueProp:
+    "We help B2B SaaS teams cut enterprise sales friction and accelerate pipeline velocity.",
   tone: "direct",
   defaultObjective: "client_acquisition",
   icpProfile: {
@@ -53,7 +54,6 @@ export const DEFAULT_SETTINGS: UserSettings = {
   },
 };
 
-
 export function getLocalLeads(): LeadRecord[] {
   if (typeof window === "undefined") return [];
   try {
@@ -70,12 +70,14 @@ export function saveLocalLead(
   domain: string,
   companyName: string,
   objective: string,
-  result: ScoutResult
+  result: ScoutResult,
 ): LeadRecord {
   const existing = getLocalLeads();
   // Filter out any previous record for the same domain to update with newest
   const cleanDomain = domain.toLowerCase().trim();
-  const filtered = existing.filter((l) => l.domain.toLowerCase() !== cleanDomain);
+  const filtered = existing.filter(
+    (l) => l.domain.toLowerCase() !== cleanDomain,
+  );
 
   const newRecord: LeadRecord = {
     id: `local_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -155,7 +157,9 @@ export function getUserSettings(): UserSettings {
   }
 }
 
-export function saveUserSettings(settings: Partial<UserSettings>): UserSettings {
+export function saveUserSettings(
+  settings: Partial<UserSettings>,
+): UserSettings {
   const current = getUserSettings();
   const updated = { ...current, ...settings };
   try {
@@ -165,3 +169,168 @@ export function saveUserSettings(settings: Partial<UserSettings>): UserSettings 
   }
   return updated;
 }
+
+// ─── Pipeline Storage ────────────────────────────────────────────────────────
+
+const PIPELINE_STORAGE_KEY = "leadscout_pipeline";
+
+export function getPipelineLeads(): PipelineLead[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(PIPELINE_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error("Error reading pipeline:", e);
+    return [];
+  }
+}
+
+function savePipelineLeadsRaw(leads: PipelineLead[]): void {
+  try {
+    localStorage.setItem(PIPELINE_STORAGE_KEY, JSON.stringify(leads));
+  } catch (e) {
+    console.error("Error saving pipeline:", e);
+  }
+}
+
+export function savePipelineLead(lead: PipelineLead): PipelineLead {
+  const existing = getPipelineLeads();
+  const idx = existing.findIndex((l) => l.id === lead.id);
+  if (idx >= 0) {
+    existing[idx] = lead;
+  } else {
+    existing.unshift(lead);
+  }
+  savePipelineLeadsRaw(existing);
+  return lead;
+}
+
+export function movePipelineLead(leadId: string, newStage: PipelineStage): PipelineLead | null {
+  const existing = getPipelineLeads();
+  const idx = existing.findIndex((l) => l.id === leadId);
+  if (idx < 0) return null;
+  existing[idx] = {
+    ...existing[idx],
+    stage: newStage,
+    movedAt: new Date().toISOString(),
+    lastActivityAt: new Date().toISOString(),
+  };
+  savePipelineLeadsRaw(existing);
+  return existing[idx];
+}
+
+export function updatePipelineLead(leadId: string, updates: Partial<PipelineLead>): PipelineLead | null {
+  const existing = getPipelineLeads();
+  const idx = existing.findIndex((l) => l.id === leadId);
+  if (idx < 0) return null;
+  existing[idx] = {
+    ...existing[idx],
+    ...updates,
+    lastActivityAt: new Date().toISOString(),
+  };
+  savePipelineLeadsRaw(existing);
+  return existing[idx];
+}
+
+export function deletePipelineLead(leadId: string): PipelineLead[] {
+  const existing = getPipelineLeads();
+  const updated = existing.filter((l) => l.id !== leadId);
+  savePipelineLeadsRaw(updated);
+  return updated;
+}
+
+/** Auto-import researched leads into pipeline as "cold" if not already present */
+export function syncLeadsToPipeline(): PipelineLead[] {
+  const leads = getLocalLeads();
+  const pipeline = getPipelineLeads();
+  const existingDomains = new Set(pipeline.map((p) => p.domain.toLowerCase()));
+
+  let changed = false;
+  for (const lead of leads) {
+    const cleanDomain = lead.domain.toLowerCase();
+    if (!existingDomains.has(cleanDomain)) {
+      const dossier = lead.dossier_json?.dossier;
+      const newPipelineLead: PipelineLead = {
+        id: `pl_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        domain: cleanDomain,
+        companyName: lead.company_name || dossier?.companyName || cleanDomain,
+        stage: "cold",
+        objective: lead.objective || "client_acquisition",
+        icpScore: undefined,
+        icpTier: undefined,
+        estimatedValue: 0,
+        contactName: undefined,
+        contactEmail: undefined,
+        contactTitle: undefined,
+        notes: "",
+        followUpDate: undefined,
+        followUpNote: undefined,
+        touchesSent: 0,
+        lastActivityAt: lead.created_at || new Date().toISOString(),
+        createdAt: lead.created_at || new Date().toISOString(),
+        movedAt: lead.created_at || new Date().toISOString(),
+        dossierRef: lead.dossier_json,
+        tags: dossier?.industryTags?.slice(0, 3) || [],
+      };
+      pipeline.unshift(newPipelineLead);
+      existingDomains.add(cleanDomain);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    savePipelineLeadsRaw(pipeline);
+  }
+  return pipeline;
+}
+
+export function computePipelineMetrics(leads: PipelineLead[]): PipelineMetrics {
+  const byStage: Record<PipelineStage, number> = {
+    cold: 0, contacted: 0, replied: 0, won: 0, lost: 0,
+  };
+  let totalValue = 0;
+  let totalDays = 0;
+  let overdueFollowUps = 0;
+  let upcomingFollowUps = 0;
+  const now = new Date();
+
+  for (const lead of leads) {
+    byStage[lead.stage]++;
+    totalValue += lead.estimatedValue || 0;
+    const created = new Date(lead.createdAt);
+    totalDays += (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+
+    if (lead.followUpDate) {
+      const fdate = new Date(lead.followUpDate);
+      if (fdate < now && lead.stage !== "won" && lead.stage !== "lost") {
+        overdueFollowUps++;
+      } else if (fdate >= now && lead.stage !== "won" && lead.stage !== "lost") {
+        upcomingFollowUps++;
+      }
+    }
+  }
+
+  const total = leads.length || 1;
+
+  // Count all leads that ever progressed past cold
+  const everContacted = leads.filter((l) => l.stage !== "cold").length;
+  const everReplied = leads.filter((l) => l.stage === "replied" || l.stage === "won").length;
+  const wonCount = byStage.won;
+
+  return {
+    totalLeads: leads.length,
+    byStage,
+    conversionRates: {
+      coldToContacted: total > 0 ? Math.round((everContacted / total) * 100) : 0,
+      contactedToReplied: everContacted > 0 ? Math.round((everReplied / everContacted) * 100) : 0,
+      repliedToWon: everReplied > 0 ? Math.round((wonCount / everReplied) * 100) : 0,
+      overallWinRate: total > 0 ? Math.round((wonCount / total) * 100) : 0,
+    },
+    estimatedPipelineValue: totalValue,
+    avgDaysInPipeline: Math.round(totalDays / total),
+    upcomingFollowUps,
+    overdueFollowUps,
+  };
+}
+
