@@ -23,6 +23,72 @@ export interface BattlecardSummary {
   }[];
 }
 
+export type ObjectionCategory =
+  | "budget"
+  | "competitor"
+  | "timing"
+  | "inhouse"
+  | "authority"
+  | "general";
+
+export interface ObjectionRebuttal {
+  id: string;
+  objection: string;
+  category: ObjectionCategory;
+  categoryLabel: string;
+  psychologicalRoot: string;
+  voiceScript: string;
+  steps: {
+    acknowledge: string;
+    reframe: string;
+    pivot: string;
+  };
+  trapQuestion: string;
+  quickTip: string;
+}
+
+export type DiscoveryFramework = "SPIN" | "MEDDIC";
+
+export interface DiscoveryQuestion {
+  id: string;
+  framework: DiscoveryFramework;
+  stage: string;
+  stageDescription: string;
+  question: string;
+  rationale: string;
+  listenFor: {
+    greenFlags: string[];
+    redFlags: string[];
+  };
+  targetPersona: string;
+}
+
+export interface CompetitorTrap {
+  competitorName: string;
+  competitorDomain?: string;
+  landmineQuestion: string;
+  killPoint: string;
+  wedgeAngle: string;
+  whereTheyFail: string;
+}
+
+export interface ColdCallHook {
+  personaRole: string;
+  patternInterrupt: string;
+  hookScript: string;
+  elevatorPitch: string;
+  softAsk: string;
+}
+
+export interface SalesPlaybook {
+  topObjections: ObjectionRebuttal[];
+  discoveryQuestions: DiscoveryQuestion[];
+  competitorTraps: CompetitorTrap[];
+  coldCallHooks: ColdCallHook[];
+  whyWeWinElevatorPitch: string;
+  onePagerSummary: string;
+}
+
 export type SeniorityLevel = "C-Level" | "VP" | "Head / Director" | "Lead";
 export type Department =
   | "Sales & Revenue"
@@ -73,6 +139,7 @@ export interface CompanyDossier {
   competitors?: CompetitorItem[];
   battlecardSummary?: BattlecardSummary;
   decisionMakers?: DecisionMakerContact[];
+  salesPlaybook?: SalesPlaybook;
 }
 
 export interface OutreachEmail {
